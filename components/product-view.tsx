@@ -3,6 +3,7 @@
 import type { Product } from "@channel3/sdk/resources";
 
 import { ProductDetails } from "@/components/product-details";
+import { ProductRecommendations } from "@/components/product-recommendations";
 import { useVariantSelection } from "@/hooks/use-variant-selection";
 import { fetchSimilarProducts, resolveVariant } from "@/lib/channel3/client-products";
 
@@ -27,8 +28,17 @@ export function ProductView({ product }: { product: Product }) {
       isResolving={isResolving}
       onSelectVariant={handleSelectVariant}
       buyLinkRel="sponsored noopener noreferrer"
+    />
+  );
+}
+
+export function ProductRecommendationsView({ productId }: { productId: string }) {
+  return (
+    <ProductRecommendations
+      productId={productId}
       fetchSimilar={fetchSimilarProducts}
-      recommendations={{ limit: 12 }}
+      limit={12}
+      title="You might also like"
     />
   );
 }

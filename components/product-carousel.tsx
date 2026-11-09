@@ -70,7 +70,7 @@ export function ProductCarousel({
               <CarouselItem key={product.id} className={itemClassName}>
                 <ProductCard
                   product={product}
-                  href={getHref?.(product)}
+                  href={getHref ? getHref(product) : `/products/${encodeURIComponent(product.id)}`}
                   onSelect={onSelect}
                   onPreload={onPreload}
                   onSelectVariant={

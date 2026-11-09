@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AddToCart } from "@/components/add-to-cart";
-import { ProductView } from "@/components/product-view";
+import { ProductRecommendationsView, ProductView } from "@/components/product-view";
 import { getProduct } from "@/lib/channel3/products";
 
 type PageProps = {
@@ -106,6 +106,8 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
           </div>
         </aside>
       </div>
+
+      <ProductRecommendationsView productId={product.id} />
     </div>
   );
 }

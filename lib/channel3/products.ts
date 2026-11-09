@@ -100,6 +100,47 @@ export async function getSuggestedProducts(limit = 8): Promise<SuggestedGroup[]>
 
 export async function getSimilarProducts(productId: string, limit = 12): Promise<Product[]> {
   const client = getChannel3();
-  const page = await client.products.findSimilar({ product_id: productId, limit });
-  return page.data;
+  const similar = await client.products
+    .findSimilar({ product_id: productId, limit })
+    .then((page) => page.data ?? [])
+    .catch(() => [] as Product[]);
+  const recommendations = new Map<string, Product>();
+
+  for (const product of similar) {
+    if (product.id !== productId) recommendations.set(product.id, product);
+  }
+  if (recommendations.size >= limit) return [...recommendations.values()].slice(0, limit);
+
+  let product: Product;
+  try {
+    product = await client.products.retrieve({ product_id: productId });
+  } catch {
+    return [...recommendations.values()].slice(0, limit);
+  }
+
+  const brand = product.brands?.[0]?.name;
+  const category = product.category?.title;
+  const queries = [...new Set([
+    [brand, category].filter(Boolean).join(" "),
+    category,
+    brand,
+    product.title.split(/\s+/).slice(0, 3).join(" "),
+  ].filter((query): query is string => Boolean(query?.trim())))];
+
+  for (const query of queries) {
+    if (recommendations.size >= limit) break;
+    try {
+      const { products } = await searchProducts({ query, limit: Math.min(30, limit * 2) });
+      for (const candidate of products) {
+        if (candidate.id !== productId && !recommendations.has(candidate.id)) {
+          recommendations.set(candidate.id, candidate);
+          if (recommendations.size >= limit) break;
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return [...recommendations.values()].slice(0, limit);
 }
