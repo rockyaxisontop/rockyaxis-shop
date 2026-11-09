@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import storeLogo from "../mt-store.jpeg";
+import storeLogo from "../mt-store-white.png";
 import {
   ChevronRight,
   Headphones,
@@ -80,10 +80,11 @@ export function SiteHeader() {
   ) : (
     <Link
       href="/login"
+      aria-label="Login / Register"
       className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-ink-soft hover:text-ink"
     >
       <UserRound className="size-4" />
-      Login / Register
+      <span className="hidden sm:inline">Login / Register</span>
     </Link>
   );
 
@@ -129,7 +130,7 @@ export function SiteHeader() {
       </div>
 
       {/* Main row: logo + search + account */}
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 lg:gap-8">
+      <div className="relative mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 lg:gap-8">
         <button
           type="button"
           aria-label="Open menu"
@@ -143,7 +144,7 @@ export function SiteHeader() {
         <Link
           href="/"
           aria-label="MT Store home"
-          className="flex h-9 w-[104px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#05070a] px-1.5 sm:h-10 sm:w-32"
+          className="absolute left-1/2 flex h-9 w-[104px] -translate-x-1/2 shrink-0 items-center justify-center overflow-hidden md:static md:h-10 md:w-32 md:translate-x-0"
         >
           <Image
             src={storeLogo}
