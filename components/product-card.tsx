@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { ImageOff } from "lucide-react";
 import type { OptionValue, Product } from "@channel3/sdk/resources";
