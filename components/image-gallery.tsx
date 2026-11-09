@@ -53,7 +53,7 @@ function GalleryImage({
       fetchPriority={priority ? "high" : undefined}
       decoding="async"
       className={cn(
-        "absolute inset-0 size-full object-cover transition-opacity duration-300",
+        "absolute inset-0 size-full bg-white object-contain transition-opacity duration-300",
         loaded ? "opacity-100" : "opacity-0",
         className,
       )}
@@ -113,7 +113,7 @@ export function ImageGallery({ images, previewSrc, className, ...props }: ImageG
       <div
         data-slot="image-gallery"
         className={cn(
-          "flex aspect-[4/3] items-center justify-center rounded-lg bg-muted text-muted-foreground sm:aspect-square",
+          "flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg bg-white text-muted-foreground ring-1 ring-border/60",
           className,
         )}
         {...props}
@@ -126,22 +126,15 @@ export function ImageGallery({ images, previewSrc, className, ...props }: ImageG
   const multiple = images.length > 1;
 
   return (
-    <div data-slot="image-gallery" className={cn("flex flex-col gap-2", className)} {...props}>
+    <div data-slot="image-gallery" className={cn("flex min-w-0 flex-col gap-2", className)} {...props}>
       <div className="relative">
-        <Carousel setApi={setApi} className="w-full">
+        <Carousel setApi={setApi} className="w-full min-w-0 overflow-hidden">
           <CarouselContent>
             {images.map((image, index) => {
               const showPreview = Boolean(activePreview) && index === selected;
               return (
                 <CarouselItem key={`${image.url}-${index}`}>
-                  <div className="relative overflow-hidden rounded-lg bg-muted">
-                    {/* Invisible sizer: a square, plus the thumbnail strip's own
-                        height when there's no strip — so a single image fills the
-                        same footprint as a multi-image gallery. */}
-                    <div aria-hidden className="invisible flex flex-col gap-2">
-                      <div className="aspect-[4/3] sm:aspect-square" />
-                      {multiple ? null : <div className="size-14" />}
-                    </div>
+                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-white ring-1 ring-border/60">
                     <GalleryImage
                       image={image}
                       priority={index === 0}
@@ -151,7 +144,7 @@ export function ImageGallery({ images, previewSrc, className, ...props }: ImageG
                       <img
                         src={activePreview ?? undefined}
                         alt=""
-                        className="absolute inset-0 size-full bg-muted object-cover"
+                        className="absolute inset-0 size-full bg-white object-contain"
                         onError={() => {
                           if (previewSrc) {
                             setBrokenPreview(previewSrc);
@@ -191,7 +184,7 @@ export function ImageGallery({ images, previewSrc, className, ...props }: ImageG
                   : "opacity-60 hover:opacity-100",
               )}
             >
-              <GalleryImage image={image} />
+              <GalleryImage image={image} className="object-cover" />
             </button>
           ))}
         </div>
