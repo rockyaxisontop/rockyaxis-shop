@@ -23,13 +23,6 @@ import {
 
 import { useAuth } from "@/components/providers";
 import { signOutUser } from "@/lib/firebase/auth";
-import { cn } from "@/lib/utils";
-
-const primaryLinks = [
-  { href: "/", label: "Home", icon: House },
-  { href: "/search", label: "Search", icon: Search },
-  { href: "/cart", label: "Cart", icon: ShoppingBag },
-];
 
 const categories = [
   { label: "Smartphones", icon: Smartphone, q: "smartphones" },
@@ -85,6 +78,17 @@ export function SiteHeader() {
     >
       <UserRound className="size-4" />
       <span className="hidden sm:inline">Login / Register</span>
+    </Link>
+  );
+
+  const cartAction = (
+    <Link
+      href="/cart"
+      aria-label="Cart"
+      title="Cart"
+      className="grid size-9 shrink-0 place-items-center rounded-lg border border-border text-ink transition-colors hover:bg-surface-2 hover:text-brand"
+    >
+      <ShoppingBag className="size-4" />
     </Link>
   );
 
@@ -156,7 +160,8 @@ export function SiteHeader() {
 
         {showGlobalSearch ? <div className="hidden flex-1 md:block">{searchField}</div> : null}
 
-        <div className="ml-auto flex shrink-0 items-center gap-4">
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+          {cartAction}
           {authAction}
         </div>
       </div>
@@ -165,21 +170,8 @@ export function SiteHeader() {
       {showGlobalSearch ? <div className="px-4 pb-3 md:hidden">{searchField}</div> : null}
 
       {/* Category nav — desktop */}
-      <nav className="hidden border-t border-border lg:block">
+      <nav aria-label="Shop categories" className="hidden border-t border-border lg:block">
         <div className="mx-auto flex h-11 w-full max-w-7xl items-center gap-1 px-4 text-sm">
-          {primaryLinks.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "rounded-md px-3 py-1.5 font-medium text-ink transition-colors hover:bg-surface-2",
-                pathname === href && "bg-surface-2 text-brand",
-              )}
-            >
-              {label}
-            </Link>
-          ))}
-          <span className="mx-2 h-4 w-px bg-border" />
           {categories.map(({ label, q }) => (
             <Link
               key={q}
@@ -224,25 +216,6 @@ export function SiteHeader() {
         </nav>
       ) : null}
 
-      {/* Bottom tab bar — mobile */}
-      <nav className="grid grid-cols-3 border-t border-border bg-white lg:hidden">
-        {primaryLinks.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors active:bg-surface-2",
-                active ? "text-brand" : "text-ink-soft",
-              )}
-            >
-              <Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
     </header>
   );
 }
