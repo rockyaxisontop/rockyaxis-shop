@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Client-only app: every user may read/write only their own documents.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // users/{uid} – profile snapshot written right after sign-up.
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // carts/{uid}/items/{itemId} – live cart, private per user.
+    match /carts/{uid}/items/{itemId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // orders/{uid}/history/{orderId} – past orders kept after checkout.
+    match /orders/{uid}/history/{orderId} {
+      allow read, create: if isOwner(uid);
+      allow update, delete: if false;
+    }
+  }
+}
