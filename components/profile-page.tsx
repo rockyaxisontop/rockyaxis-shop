@@ -42,23 +42,6 @@ const EMPTY_PROFILE: ProfileData = {
   coordinates: null,
 };
 
-const REGION_CITIES: Record<string, string[]> = {
-  "Bagmati Province": ["Kathmandu", "Lalitpur", "Bhaktapur", "Hetauda", "Dhulikhel"],
-  "Koshi Province": ["Biratnagar", "Dharan", "Itahari", "Birtamod"],
-  "Madhesh Province": ["Janakpur", "Birgunj", "Kalaiya", "Lahan"],
-  "Gandaki Province": ["Pokhara", "Gorkha", "Baglung", "Damauli"],
-  "Lumbini Province": ["Butwal", "Nepalgunj", "Ghorahi", "Tulsipur"],
-  "Karnali Province": ["Birendranagar", "Jumla", "Dailekh"],
-  "Sudurpashchim Province": ["Dhangadhi", "Mahendranagar", "Tikapur"],
-};
-
-const CITY_AREAS: Record<string, string[]> = {
-  Kathmandu: ["Thamel", "New Baneshwor", "Boudha", "Lazimpat", "Kalanki"],
-  Lalitpur: ["Patan", "Jawalakhel", "Kupondole", "Satdobato", "Imadol"],
-  Bhaktapur: ["Suryabinayak", "Thimi", "Kamalbinayak", "Sallaghari"],
-  Pokhara: ["Lakeside", "Mahendrapul", "Bagar", "Prithvi Chowk"],
-};
-
 const fieldClass =
   "h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15";
 
@@ -191,9 +174,6 @@ export function ProfilePage() {
   }
   if (!user) return null;
 
-  const cities = REGION_CITIES[profile.region] ?? [];
-  const areas = CITY_AREAS[profile.city] ?? [];
-
   return (
     <div className="mx-auto w-full max-w-5xl py-5 sm:py-8">
       <header className="mb-8 flex items-center gap-3 border-b border-border pb-5">
@@ -257,53 +237,40 @@ export function ProfilePage() {
               />
             </Field>
             <Field label="Region">
-              <span className="relative">
-                <select
-                  className={`${fieldClass} appearance-none pr-9`}
-                  required
-                  value={profile.region}
-                  onChange={(event) => setProfile((current) => ({ ...current, region: event.target.value, city: "", area: "" }))}
-                >
-                  <option value="">Please choose your region</option>
-                  {Object.keys(REGION_CITIES).map((region) => <option key={region}>{region}</option>)}
-                </select>
-                <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-ink-soft" />
-              </span>
+              <input
+                className={fieldClass}
+                autoComplete="address-level1"
+                required
+                value={profile.region}
+                onChange={(event) => updateField("region", event.target.value)}
+                placeholder="Enter your region"
+              />
             </Field>
             <Field label="City">
-              <span className="relative">
-                <select
-                  className={`${fieldClass} appearance-none pr-9 disabled:cursor-not-allowed disabled:bg-surface-2`}
-                  required
-                  disabled={!profile.region}
-                  value={profile.city}
-                  onChange={(event) => setProfile((current) => ({ ...current, city: event.target.value, area: "" }))}
-                >
-                  <option value="">Please choose your city</option>
-                  {cities.map((city) => <option key={city}>{city}</option>)}
-                </select>
-                <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-ink-soft" />
-              </span>
+              <input
+                className={fieldClass}
+                autoComplete="address-level2"
+                required
+                value={profile.city}
+                onChange={(event) => updateField("city", event.target.value)}
+                placeholder="Enter your city"
+              />
             </Field>
             <Field label="Area">
               <input
                 className={fieldClass}
-                list="profile-area-options"
                 required
                 value={profile.area}
                 onChange={(event) => updateField("area", event.target.value)}
-                placeholder="Please choose your area"
+                placeholder="Enter your area"
               />
-              <datalist id="profile-area-options">
-                {areas.map((area) => <option key={area} value={area} />)}
-              </datalist>
             </Field>
-            <Field label="Address / delivery notes">
+            <Field label="Address">
               <input
                 className={fieldClass}
                 value={profile.address}
                 onChange={(event) => updateField("address", event.target.value)}
-                placeholder="Optional directions for the courier"
+                placeholder="Apartment, suite, or extra directions (optional)"
               />
             </Field>
 
@@ -346,22 +313,14 @@ export function ProfilePage() {
             ) : null}
           </div>
 
-          {error ? <p role="alert" className="mt-5 text-sm text-destructive">{error}</p> : null}
-          {notice ? <p role="status" className="mt-5 text-sm text-stock">{notice}</p> : null}
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70 sm:w-auto"
-          >
-            {saving ? <Loader2 className="size-4 animate-spin" /> : null}
-            {saving ? "Saving…" : "Save shipping and billing address"}
-          </button>
         </section>
 
-        <aside className="min-w-0 border-t border-border pt-7 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
+        <aside className="min-w-0 self-start rounded-lg border border-border bg-white p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-ink">Account details</h2>
+            <div>
+              <h2 className="text-lg font-bold text-ink">Account details</h2>
+              <p className="mt-0.5 text-xs text-ink-soft">Email, mobile, and personal details</p>
+            </div>
             <button
               type="button"
               onClick={() => setEditingPersonal((value) => !value)}
@@ -372,8 +331,8 @@ export function ProfilePage() {
             </button>
           </div>
 
-          <dl className="mt-5 divide-y divide-border">
-            <div className="py-3">
+          <dl className="mt-4 divide-y divide-border">
+            <div className="py-3 first:pt-0">
               <dt className="flex items-center justify-between gap-3 text-xs font-semibold text-ink-soft">
                 Email Address
                 <button type="button" className="text-brand hover:underline" onClick={() => setChangingEmail((value) => !value)}>
@@ -414,7 +373,7 @@ export function ProfilePage() {
               <dt className="text-xs font-semibold text-ink-soft">Birthday</dt>
               <dd className="mt-1 text-sm text-ink">{profile.birthday || "Please enter your birthday"}</dd>
             </div>
-            <div className="py-3">
+            <div className="py-3 last:pb-0">
               <dt className="text-xs font-semibold text-ink-soft">Gender</dt>
               <dd className="mt-1 text-sm text-ink">{profile.gender || "Please enter your gender"}</dd>
             </div>
@@ -449,10 +408,25 @@ export function ProfilePage() {
                   <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-ink-soft" />
                 </span>
               </Field>
-              <p className="text-xs text-ink-soft">Save your changes with the delivery information form.</p>
+              <p className="text-xs text-ink-soft">Save your changes with the button below.</p>
             </div>
           ) : null}
         </aside>
+
+        <div className="flex flex-col items-start gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between lg:col-span-2">
+          <div className="min-w-0" aria-live="polite">
+            {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+            {notice ? <p role="status" className="text-sm text-stock">{notice}</p> : null}
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70 sm:w-auto"
+          >
+            {saving ? <Loader2 className="size-4 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save profile and delivery information"}
+          </button>
+        </div>
       </form>
     </div>
   );
