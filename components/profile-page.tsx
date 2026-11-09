@@ -3,8 +3,9 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { verifyBeforeUpdateEmail } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Check, ChevronDown, Loader2, LocateFixed, MapPin, Pencil, UserRound } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, House, Loader2, LocateFixed, MapPin, Pencil, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
 import { authErrorMessage } from "@/lib/firebase/auth";
@@ -176,14 +177,23 @@ export function ProfilePage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl py-5 sm:py-8">
-      <header className="mb-8 flex items-center gap-3 border-b border-border pb-5">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-brand-tint text-brand">
-          <UserRound className="size-5" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink">Your Profile</h1>
-          <p className="mt-0.5 text-sm text-ink-soft">Manage your account and delivery information.</p>
+      <header className="mb-8 flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-brand-tint text-brand">
+            <UserRound className="size-5" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Your Profile</h1>
+            <p className="mt-0.5 text-sm text-ink-soft">Manage your account and delivery information.</p>
+          </div>
         </div>
+        <Link
+          href="/"
+          className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-ink-soft transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand"
+        >
+          <House className="size-4" />
+          Home
+        </Link>
       </header>
 
       <form onSubmit={saveProfile} className="grid gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(16rem,0.75fr)] lg:gap-12">

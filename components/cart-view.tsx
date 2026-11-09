@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { House, Minus, Plus, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,15 @@ export function CartView() {
   const { user, loading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
+  const homeLink = (
+    <Link
+      href="/"
+      className="inline-flex h-9 w-fit items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-ink-soft transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand"
+    >
+      <House className="size-4" />
+      Home
+    </Link>
+  );
 
   useEffect(() => {
     if (!user) {
@@ -30,7 +39,10 @@ export function CartView() {
   if (loading) {
     return (
       <div className="flex flex-col gap-3">
-        <Skeleton className="h-8 w-40" />
+        <div className="flex items-center justify-between gap-4">
+          <Skeleton className="h-8 w-40" />
+          {homeLink}
+        </div>
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
       </div>
@@ -39,12 +51,17 @@ export function CartView() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center gap-4 py-20 text-center">
-        <h1 className="text-2xl font-semibold">Your cart</h1>
-        <p className="text-sm text-muted-foreground">Sign in to see what you saved.</p>
-        <Button asChild>
-          <Link href="/login?next=/cart">Sign in</Link>
-        </Button>
+      <div className="flex flex-col gap-8 py-8">
+        <header className="flex items-center justify-between gap-4 border-b border-border pb-4">
+          <h1 className="text-2xl font-semibold">Your cart</h1>
+          {homeLink}
+        </header>
+        <div className="flex flex-col items-center gap-4 py-12 text-center">
+          <p className="text-sm text-muted-foreground">Sign in to see what you saved.</p>
+          <Button asChild>
+            <Link href="/login?next=/cart">Sign in</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -54,7 +71,10 @@ export function CartView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Your cart</h1>
+      <header className="flex items-center justify-between gap-4 border-b border-border pb-4">
+        <h1 className="text-2xl font-semibold tracking-tight">Your cart</h1>
+        {homeLink}
+      </header>
 
       {!ready ? (
         <Skeleton className="h-24 w-full" />

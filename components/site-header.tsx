@@ -39,8 +39,6 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const initial = (user?.displayName ?? user?.email ?? "?").charAt(0).toUpperCase();
-
   function submitSearch(event: React.FormEvent) {
     event.preventDefault();
     const q = query.trim();
@@ -59,8 +57,8 @@ export function SiteHeader() {
         title="Your Profile"
         className="flex items-center gap-2 text-xs font-semibold text-ink-soft transition-colors hover:text-brand"
       >
-        <span className="grid size-9 place-items-center rounded-full bg-brand text-xs font-semibold text-white">
-          {initial}
+        <span className="grid size-9 place-items-center rounded-full bg-brand-tint text-brand">
+          <UserRound className="size-4" aria-hidden />
         </span>
         <span className="hidden lg:inline">Your Profile</span>
       </Link>
