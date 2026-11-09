@@ -43,7 +43,7 @@ function ProductTile({ product }: { product: Product }) {
       href={`/products/${product.id}`}
       className="group flex flex-col overflow-hidden rounded-xl border transition-shadow hover:shadow-md active:opacity-90"
     >
-      <div className="relative aspect-square bg-muted">
+      <div className="relative aspect-[4/3] bg-muted sm:aspect-square">
         {product.images?.[0]?.url ? (
           <Image
             src={product.images[0].url}

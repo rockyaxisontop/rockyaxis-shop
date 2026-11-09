@@ -113,7 +113,7 @@ export function ImageGallery({ images, previewSrc, className, ...props }: ImageG
       <div
         data-slot="image-gallery"
         className={cn(
-          "flex aspect-square items-center justify-center rounded-lg bg-muted text-muted-foreground",
+          "flex aspect-[4/3] items-center justify-center rounded-lg bg-muted text-muted-foreground sm:aspect-square",
           className,
         )}
         {...props}
@@ -139,7 +139,7 @@ export function ImageGallery({ images, previewSrc, className, ...props }: ImageG
                         height when there's no strip — so a single image fills the
                         same footprint as a multi-image gallery. */}
                     <div aria-hidden className="invisible flex flex-col gap-2">
-                      <div className="aspect-square" />
+                      <div className="aspect-[4/3] sm:aspect-square" />
                       {multiple ? null : <div className="size-14" />}
                     </div>
                     <GalleryImage

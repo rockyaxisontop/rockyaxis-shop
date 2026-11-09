@@ -38,6 +38,7 @@ const categories = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const showGlobalSearch = pathname !== "/search";
   const router = useRouter();
   const { user, loading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -117,7 +118,7 @@ export function SiteHeader() {
             Store Location: Kathmandu Valley
           </span>
           <div className="flex items-center gap-5">
-            <span>Free delivery on orders over Rs 5,000</span>
+            <span>Free delivery on every order</span>
             <Link href="/search" className="font-medium text-brand hover:underline">
               Dashain – Tihar Offers →
             </Link>
@@ -146,7 +147,7 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <div className="hidden flex-1 md:block">{searchField}</div>
+        {showGlobalSearch ? <div className="hidden flex-1 md:block">{searchField}</div> : null}
 
         <div className="ml-auto flex shrink-0 items-center gap-4">
           {authAction}
@@ -154,7 +155,7 @@ export function SiteHeader() {
       </div>
 
       {/* Search on phones sits on its own row */}
-      <div className="px-4 pb-3 md:hidden">{searchField}</div>
+      {showGlobalSearch ? <div className="px-4 pb-3 md:hidden">{searchField}</div> : null}
 
       {/* Category nav — desktop */}
       <nav className="hidden border-t border-border lg:block">

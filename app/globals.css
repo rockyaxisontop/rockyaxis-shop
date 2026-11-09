@@ -137,4 +137,8 @@
   body {
     @apply bg-background text-foreground;
   }
+  a,
+  button {
+    touch-action: manipulation;
+  }
 }

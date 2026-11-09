@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Headphones, Search, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Headphones, ShieldCheck, Truck } from "lucide-react";
 
 import { CategoryTiles } from "@/components/category-tiles";
 import { PromoBanners } from "@/components/promo-banners";
@@ -11,7 +11,7 @@ import { getSuggestedProducts, type SuggestedGroup } from "@/lib/channel3/produc
 export const revalidate = 1800;
 
 const trusted = [
-  { icon: Truck, label: "Free delivery", text: "on orders over Rs 5,000" },
+  { icon: Truck, label: "Free delivery", text: "on every order" },
   { icon: ShieldCheck, label: "Genuine products", text: "warranty included" },
   { icon: BadgeCheck, label: "Best price", text: "compared across stores" },
   { icon: Headphones, label: "Support", text: "every day, 9am – 8pm" },
@@ -35,23 +35,7 @@ export default async function HomePage() {
           <p className="mt-3 max-w-lg text-sm text-white/80 sm:text-base">
             Compare live prices on tech, home, fashion and everyday essentials from stores you trust.
           </p>
-          <form action="/search" role="search" className="mt-6 flex max-w-xl gap-2 rounded-lg bg-white p-1.5">
-            <Search className="my-auto ml-3 size-4 shrink-0 text-ink-soft" aria-hidden />
-            <input
-              type="search"
-              name="q"
-              placeholder="What are you looking for?"
-              aria-label="Search products"
-              className="h-10 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-soft"
-            />
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-brand px-4 text-sm font-bold text-white transition hover:brightness-110"
-            >
-              Search <ArrowRight className="size-4" />
-            </button>
-          </form>
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/75">
+          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/75">
             <span>Popular:</span>
             {[
               ["Smartphones", "smartphones"],

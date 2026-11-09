@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ImageOff } from "lucide-react";
 import type { OptionValue, Product } from "@channel3/sdk/resources";
 
@@ -60,6 +62,7 @@ export function ProductCard({
   className,
   ...props
 }: ProductCardProps) {
+  const router = useRouter();
   const [imageFailed, setImageFailed] = React.useState(false);
   const [imageLoaded, setImageLoaded] = React.useState(false);
   const [useRaw, setUseRaw] = React.useState(false);
@@ -127,7 +130,7 @@ export function ProductCard({
 
   const media = (
     <div
-      className="relative aspect-square overflow-hidden rounded-lg bg-white"
+      className="relative aspect-[4/3] overflow-hidden rounded-lg bg-white sm:aspect-square"
       onMouseEnter={() => {
         setImageHovered(true);
         window.dispatchEvent(
@@ -272,17 +275,22 @@ export function ProductCard({
     "block w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   const preload = onPreload ? () => onPreload(product) : undefined;
+  const prefetchDestination = () => {
+    preload?.();
+    if (href) router.prefetch(href);
+  };
 
-  // Real href stays crawlable; a plain left-click is SPA via onSelect.
+  // Keep the destination crawlable while using Next's client-side navigation.
   const tap = (children: React.ReactNode) => {
     if (href) {
       return (
-        <a
+        <Link
           href={href}
+          prefetch={false}
           className={tapClass}
-          onMouseEnter={preload}
-          onFocus={preload}
-          onTouchStart={preload}
+          onMouseEnter={prefetchDestination}
+          onFocus={prefetchDestination}
+          onTouchStart={prefetchDestination}
           onClick={(event) => {
             if (
               onSelect &&
@@ -298,7 +306,7 @@ export function ProductCard({
           }}
         >
           {children}
-        </a>
+        </Link>
       );
     }
     if (interactive) {
