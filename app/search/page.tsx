@@ -12,9 +12,9 @@ export const revalidate = 1800;
 export default async function SearchPage() {
   const groups = await getSuggestedProducts(8);
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5 sm:gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Search</h1>
         <p className="text-sm text-muted-foreground">
           Live results and prices from thousands of stores.
         </p>

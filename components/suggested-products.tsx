@@ -12,12 +12,12 @@ export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
   if (groups.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-10 pt-4">
+    <section className="flex flex-col gap-8 pt-2 sm:gap-10 sm:pt-4">
       {groups.map((group) => (
-        <div key={group.key} className="flex flex-col gap-4">
-          <h2 className="text-lg font-semibold tracking-tight">{group.title}</h2>
+        <div key={group.key} className="flex flex-col gap-3 sm:gap-4">
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg">{group.title}</h2>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {group.products.map((product) => (
               <ProductTile key={product.id} product={product} />
             ))}
@@ -41,7 +41,7 @@ function ProductTile({ product }: { product: Product }) {
   return (
     <Link
       href={`/products/${product.id}`}
-      className="group flex flex-col overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
+      className="group flex flex-col overflow-hidden rounded-xl border transition-shadow hover:shadow-md active:opacity-90"
     >
       <div className="relative aspect-square bg-muted">
         {product.images?.[0]?.url ? (
@@ -55,10 +55,10 @@ function ProductTile({ product }: { product: Product }) {
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <p className="line-clamp-2 text-sm font-medium">{product.title}</p>
+      <div className="flex flex-1 flex-col gap-1 p-2.5 sm:p-3">
+        <p className="line-clamp-2 text-[13px] leading-snug font-medium sm:text-sm">{product.title}</p>
         {product.brands?.[0]?.name ? (
-          <p className="text-xs text-muted-foreground">{product.brands[0].name}</p>
+          <p className="truncate text-xs text-muted-foreground">{product.brands[0].name}</p>
         ) : null}
         <p className="mt-auto pt-1 text-sm font-semibold">
           {cheapest?.price?.price != null

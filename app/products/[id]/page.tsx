@@ -53,8 +53,8 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
   );
 
   return (
-    <div className="flex flex-col gap-12">
-      <nav className="text-sm text-muted-foreground">
+    <div className="flex flex-col gap-6 sm:gap-12">
+      <nav className="truncate text-sm text-muted-foreground">
         <Link href="/search" className="hover:text-foreground">
           Search
         </Link>
@@ -66,20 +66,22 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
         ) : null}
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <ProductView product={product} />
+      <div className="grid items-start gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0">
+          <ProductView product={product} />
+        </div>
 
-        <aside className="lg:sticky lg:top-20 lg:h-fit">
-          <div className="flex flex-col gap-4 rounded-xl border p-5">
+        <aside className="min-w-0 lg:sticky lg:top-20 lg:h-fit">
+          <div className="flex flex-col gap-3 rounded-xl border p-4 sm:gap-4 sm:p-5">
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">{product.title}</h1>
+              <h1 className="text-lg leading-snug font-semibold tracking-tight sm:text-xl">{product.title}</h1>
               {product.brands?.[0]?.name ? (
                 <p className="text-sm text-muted-foreground">{product.brands[0].name}</p>
               ) : null}
             </div>
 
             {lowestOffer?.price?.price != null ? (
-              <p className="text-2xl font-semibold">
+              <p className="text-xl font-semibold sm:text-2xl">
                 {formatPrice(lowestOffer.price.price, lowestOffer.price.currency ?? "USD")}
                 {offers.length > 1 ? (
                   <span className="ml-2 text-sm font-normal text-muted-foreground">

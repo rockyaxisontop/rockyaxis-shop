@@ -16,10 +16,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-dvh antialiased">
+      {/* flex-col lets `main` grow so the footer sits at the bottom on short pages */}
+      <body className="flex min-h-dvh flex-col antialiased">
         <Providers>
           <SiteHeader />
-          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6">{children}</main>
           <footer className="border-t">
             <div className="mx-auto flex w-full max-w-6xl items-center justify-center px-4 py-6 text-sm text-muted-foreground">
               <p>© {new Date().getFullYear()} MT-Shop</p>

@@ -66,13 +66,13 @@ export function CartView() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-8">
           <ul className="divide-y rounded-xl border">
             {items.map((item) => {
               const id = cartItemId(item);
               return (
-                <li key={id} className="flex gap-4 p-4">
-                  <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                <li key={id} className="flex gap-3 p-3 sm:gap-4 sm:p-4">
+                  <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-20">
                     {item.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.image} alt={item.title} className="size-full object-cover" />
@@ -80,6 +80,7 @@ export function CartView() {
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    {/* min-w-0 above is what stops long titles from widening the row */}
                     <Link href={`/products/${item.productId}`} className="line-clamp-2 text-sm font-medium hover:underline">
                       {item.title}
                     </Link>
@@ -94,12 +95,12 @@ export function CartView() {
                     <p className="text-sm font-semibold">{formatPrice(item.price, item.currency)}</p>
                   </div>
 
-                  <div className="flex flex-col items-end justify-between">
-                    <div className="flex items-center gap-1 rounded-md border">
+                  <div className="flex shrink-0 flex-col items-end justify-between gap-2">
+                    <div className="flex items-center rounded-md border">
                       <button
                         type="button"
                         aria-label="Decrease quantity"
-                        className="grid size-8 place-items-center hover:bg-accent"
+                        className="grid size-9 place-items-center hover:bg-accent sm:size-8"
                         onClick={() => void setCartQuantity(user.uid, id, item.quantity - 1)}
                       >
                         <Minus className="size-3.5" />
@@ -108,7 +109,7 @@ export function CartView() {
                       <button
                         type="button"
                         aria-label="Increase quantity"
-                        className="grid size-8 place-items-center hover:bg-accent"
+                        className="grid size-9 place-items-center hover:bg-accent sm:size-8"
                         onClick={() => void setCartQuantity(user.uid, id, item.quantity + 1)}
                       >
                         <Plus className="size-3.5" />
@@ -117,10 +118,10 @@ export function CartView() {
                     <button
                       type="button"
                       aria-label="Remove item"
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+                      className="flex min-h-9 items-center gap-1 p-1 text-xs text-muted-foreground hover:text-destructive"
                       onClick={() => void removeFromCart(user.uid, id)}
                     >
-                      <Trash2 className="size-3.5" /> Remove
+                      <Trash2 className="size-4 sm:size-3.5" /> <span className="max-sm:sr-only">Remove</span>
                     </button>
                   </div>
                 </li>
@@ -141,7 +142,7 @@ export function CartView() {
                 href={items.find((item) => item.url)!.url}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Continue to store
               </a>

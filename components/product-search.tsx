@@ -99,7 +99,9 @@ export function ProductSearch({
   } = useProductSearch({ fetchSearch, initialQuery, searchOnMount });
 
   const bar = filtersLayout === "bar";
-  const [showFilters, setShowFilters] = React.useState(!bar);
+  // Mobile-friendly default: the sidebar filters start collapsed until the user
+  // taps the toggle, instead of pushing the results off-screen.
+  const [showFilters, setShowFilters] = React.useState(false);
 
   const handleImage = async (file: File) => {
     const base64Image = await readBase64(file);
@@ -121,7 +123,7 @@ export function ProductSearch({
 
   const resultsBody =
     query.trim().length === 0 && image == null && results.length === 0 && !isLoading ? (
-      <p className="py-16 text-center text-sm text-muted-foreground">
+      <p className="py-8 text-center text-sm text-muted-foreground sm:py-16">
         Search for products to get started.
       </p>
     ) : (
@@ -227,20 +229,38 @@ export function ProductSearch({
         >
           <div
             className={cn(
-              "max-md:overflow-hidden md:w-[13rem] md:sticky md:top-4 md:transition-opacity",
+              "max-md:overflow-hidden max-md:overflow-y-auto max-md:max-h-[60dvh] max-md:rounded-lg max-md:border max-md:p-3 md:w-[13rem] md:sticky md:top-4 md:transition-opacity",
               filterTransition,
               showFilters ? "md:opacity-100" : "md:pointer-events-none md:opacity-0",
             )}
           >
-            <ProductFilters
-              value={filters}
-              onChange={setFilters}
-              searchBrands={searchBrands}
-              searchWebsites={searchWebsites}
-              searchCategories={searchCategories}
-              getCategory={getCategory}
-              colorPercentages={colorPercentages}
-            />
+            {/* Sidebar layout (md+) */}
+            <div className="hidden md:block">
+              <ProductFilters
+                value={filters}
+                onChange={setFilters}
+                searchBrands={searchBrands}
+                searchWebsites={searchWebsites}
+                searchCategories={searchCategories}
+                getCategory={getCategory}
+                colorPercentages={colorPercentages}
+              />
+            </div>
+
+            {/* Phone layout: same filters, compact horizontal bar */}
+            <div className="md:hidden">
+              <ProductFiltersRoot
+                value={filters}
+                onChange={setFilters}
+                searchBrands={searchBrands}
+                searchWebsites={searchWebsites}
+                searchCategories={searchCategories}
+                getCategory={getCategory}
+                colorPercentages={colorPercentages}
+              >
+                <ProductFiltersBar />
+              </ProductFiltersRoot>
+            </div>
           </div>
         </aside>
 
