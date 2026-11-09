@@ -14,7 +14,7 @@ const perks = [
   {
     icon: PackageSearch,
     title: "Every store, one search",
-    text: "Channel3 indexes products across thousands of retailers with one consistent schema.",
+    text: "Products from thousands of shops, all in one place with one consistent catalog.",
   },
   {
     icon: Tag,
@@ -32,9 +32,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col gap-16 py-10">
       <section className="flex flex-col items-center gap-6 text-center">
-        <p className="rounded-full border px-3 py-1 text-xs text-muted-foreground">
-          Powered by Channel3
-        </p>
+
         <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">
           Find it anywhere.
           <br />

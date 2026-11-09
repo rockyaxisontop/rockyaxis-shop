@@ -16,7 +16,7 @@ export default async function SearchPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
         <p className="text-sm text-muted-foreground">
-          Live results from every store Channel3 can reach.
+          Live results and prices from thousands of stores.
         </p>
       </div>
 

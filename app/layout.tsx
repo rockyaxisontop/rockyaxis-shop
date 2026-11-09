@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { Providers } from "@/components/providers";
 import { SiteHeader } from "@/components/site-header";
@@ -22,19 +21,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SiteHeader />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
           <footer className="border-t">
-            <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-muted-foreground">
+            <div className="mx-auto flex w-full max-w-6xl items-center justify-center px-4 py-6 text-sm text-muted-foreground">
               <p>© {new Date().getFullYear()} MT-Shop</p>
-              <p>
-                Product data by{" "}
-                <Link
-                  href="https://trychannel3.com"
-                  className="underline underline-offset-4 hover:text-foreground"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Channel3
-                </Link>
-              </p>
             </div>
           </footer>
         </Providers>
