@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { FloatingOrderContact } from "@/components/floating-order-contact";
 
 import "./globals.css";
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SiteHeader />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6">{children}</main>
           <SiteFooter />
+          <FloatingOrderContact />
         </Providers>
       </body>
     </html>
