@@ -96,6 +96,7 @@ export function ProductSearch({
     hasMore,
     sentinelRef,
     submit,
+    error,
   } = useProductSearch({ fetchSearch, initialQuery, searchOnMount });
 
   const bar = filtersLayout === "bar";
@@ -121,8 +122,11 @@ export function ProductSearch({
     </div>
   ) : null;
 
-  const resultsBody =
-    query.trim().length === 0 && image == null && results.length === 0 && !isLoading ? (
+  const resultsBody = error ? (
+    <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+      Product search is temporarily unavailable. Please try again shortly.
+    </p>
+  ) : query.trim().length === 0 && image == null && results.length === 0 && !isLoading ? (
       <p className="py-8 text-center text-sm text-muted-foreground sm:py-16">
         Search for products to get started.
       </p>

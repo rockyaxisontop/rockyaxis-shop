@@ -9,7 +9,13 @@ export const metadata: Metadata = { title: "Search" };
 // Suggestions are re-fetched at most every 30 minutes.
 export const revalidate = 1800;
 
-export default async function SearchPage() {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
+  const { q } = await searchParams;
+  const initialQuery = Array.isArray(q) ? (q[0] ?? "") : (q ?? "");
   const groups = await getSuggestedProducts(8);
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
@@ -20,7 +26,7 @@ export default async function SearchPage() {
         </p>
       </div>
 
-      <SearchExperience />
+      <SearchExperience initialQuery={initialQuery} />
 
       <SuggestedProducts groups={groups} />
     </div>

@@ -71,7 +71,7 @@ export function ProductGrid({
         <ProductCard
           key={product.id}
           product={product}
-          href={getHref?.(product)}
+          href={getHref ? getHref(product) : `/products/${encodeURIComponent(product.id)}`}
           onSelect={onSelect}
           onPreload={onPreload}
           onSelectVariant={onSelectVariant ? (value) => onSelectVariant(product, value) : undefined}

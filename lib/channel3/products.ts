@@ -75,6 +75,9 @@ export const SUGGESTED_GROUPS = [
   { key: "tech", title: "Tech & gadgets", query: "phones headphones smartwatch" },
   { key: "beauty", title: "Beauty & self-care", query: "skincare beauty products" },
   { key: "sports", title: "Fitness & outdoors", query: "fitness outdoor gear" },
+  { key: "audio", title: "Audio & entertainment", query: "headphones speakers audio" },
+  { key: "gaming", title: "Gaming & accessories", query: "gaming console accessories" },
+  { key: "cameras", title: "Cameras & photography", query: "cameras photography" },
 ] as const;
 
 export type SuggestedGroup = { key: string; title: string; query: string; products: Product[] };

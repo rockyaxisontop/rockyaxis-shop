@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Headphones, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Headphones, Search, ShieldCheck, Truck } from "lucide-react";
 
 import { CategoryTiles } from "@/components/category-tiles";
 import { PromoBanners } from "@/components/promo-banners";
@@ -24,18 +24,45 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col gap-8 py-4 sm:gap-10 sm:py-6">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#011627] via-[#0b3d59] to-[#1d7fa4] px-5 py-8 text-white sm:px-10 sm:py-14">
-        <div className="max-w-xl">
+      <section className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#011627] via-[#0b3d59] to-[#1d7fa4] px-5 py-8 text-white sm:px-10 sm:py-12">
+        <div className="relative z-10 max-w-2xl">
           <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold backdrop-blur">
             Thousands of stores, one checkout
           </span>
           <h1 className="text-3xl leading-[1.1] font-extrabold tracking-tight text-balance sm:text-5xl">
             Everything you need, at the best price.
           </h1>
-          <p className="mt-3 max-w-md text-sm text-white/80 sm:text-base">
-            Phones, laptops, audio and everyday essentials — compare live prices and buy from the
-            store you trust.
+          <p className="mt-3 max-w-lg text-sm text-white/80 sm:text-base">
+            Compare live prices on tech, home, fashion and everyday essentials from stores you trust.
           </p>
+          <form action="/search" role="search" className="mt-6 flex max-w-xl gap-2 rounded-lg bg-white p-1.5">
+            <Search className="my-auto ml-3 size-4 shrink-0 text-ink-soft" aria-hidden />
+            <input
+              type="search"
+              name="q"
+              placeholder="What are you looking for?"
+              aria-label="Search products"
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-soft"
+            />
+            <button
+              type="submit"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-brand px-4 text-sm font-bold text-white transition hover:brightness-110"
+            >
+              Search <ArrowRight className="size-4" />
+            </button>
+          </form>
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-white/75">
+            <span>Popular:</span>
+            {[
+              ["Smartphones", "smartphones"],
+              ["Home", "home kitchen"],
+              ["Laptops", "laptops"],
+            ].map(([label, query]) => (
+              <Link key={query} href={`/search?q=${encodeURIComponent(query)}`} className="underline decoration-white/40 underline-offset-4 hover:text-white">
+                {label}
+              </Link>
+            ))}
+          </div>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             <Link
               href="/search"
@@ -59,6 +86,12 @@ export default async function HomePage() {
       <CategoryTiles />
 
       <PromoBanners />
+
+      {groups.length === 0 ? (
+        <p role="status" className="rounded-lg border border-border bg-white px-4 py-3 text-sm text-ink-soft">
+          Product picks are temporarily unavailable. Browse a category to search the live catalog.
+        </p>
+      ) : null}
 
       {/* First product row */}
       {first && first.products.length > 0 ? (

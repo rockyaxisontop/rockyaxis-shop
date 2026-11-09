@@ -14,14 +14,16 @@ import { fetchProductSearch, productSearchFetcher } from "@/lib/channel3/client-
  * `productSearchFetcher`, which calls our /api/channel3 proxy so the API key
  * never reaches the browser.
  */
-export function SearchExperience() {
+export function SearchExperience({ initialQuery = "" }: { initialQuery?: string }) {
   const router = useRouter();
 
   return (
     <ProductSearch
+      key={initialQuery}
       fetchSearch={productSearchFetcher}
       filtersLayout="sidebar"
       searchOnMount
+      initialQuery={initialQuery}
       imageSearch
       onSelect={(product: Product) => router.push(`/products/${product.id}`)}
     />
