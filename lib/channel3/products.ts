@@ -64,6 +64,37 @@ export async function getProduct(
   return client.products.retrieve({ product_id: productId, ...options });
 }
 
+/**
+ * Daily-life product ideas shown before the user searches (the "for you" feed).
+ * Grouped so the empty state looks like a real shop, not one random list.
+ */
+export const SUGGESTED_GROUPS = [
+  { key: "trending", title: "Trending right now", query: "trending products" },
+  { key: "home", title: "Home & kitchen", query: "home kitchen essentials" },
+  { key: "fashion", title: "Everyday fashion", query: "everyday clothing basics" },
+  { key: "tech", title: "Tech & gadgets", query: "phones headphones smartwatch" },
+  { key: "beauty", title: "Beauty & self-care", query: "skincare beauty products" },
+  { key: "sports", title: "Fitness & outdoors", query: "fitness outdoor gear" },
+] as const;
+
+export type SuggestedGroup = { key: string; title: string; products: Product[] };
+
+/** Runs the suggestion queries in parallel; failures are skipped, not thrown. */
+export async function getSuggestedProducts(limit = 8): Promise<SuggestedGroup[]> {
+  const results = await Promise.all(
+    SUGGESTED_GROUPS.map(async ({ key, title, query }) => {
+      try {
+        const { products } = await searchProducts({ query, limit });
+        return { key, title, products };
+      } catch {
+        return { key, title, products: [] as Product[] };
+      }
+    }),
+  );
+
+  return results.filter((group) => group.products.length > 0);
+}
+
 export async function getSimilarProducts(productId: string, limit = 12): Promise<Product[]> {
   const client = getChannel3();
   const page = await client.products.findSimilar({ product_id: productId, limit });

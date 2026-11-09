@@ -25,7 +25,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-4">
         <Link href="/" className="text-lg font-semibold tracking-tight">
-          RockyAxis<span className="text-muted-foreground">Shop</span>
+          MT<span className="text-muted-foreground">-Shop</span>
         </Link>
 
         <nav className="flex items-center gap-1 text-sm">

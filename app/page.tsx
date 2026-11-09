@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { ArrowRight, PackageSearch, Tag, Zap } from "lucide-react";
 
-const categories = ["Sneakers", "Hoodies", "Watches", "Headphones", "Jackets", "Bags"];
+const categories = [
+  "Home & kitchen",
+  "Phones",
+  "Headphones",
+  "Skincare",
+  "Sneakers",
+  "Backpacks",
+];
 
 const perks = [
   {

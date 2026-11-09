@@ -8,8 +8,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "RockyAxis Shop",
-    template: "%s · RockyAxis Shop",
+    default: "MT-Shop",
+    template: "%s · MT-Shop",
   },
   description: "Find any product online, compare offers and buy from the best store.",
 };
@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
           <footer className="border-t">
             <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-muted-foreground">
-              <p>© {new Date().getFullYear()} RockyAxis Shop</p>
+              <p>© {new Date().getFullYear()} MT-Shop</p>
               <p>
                 Product data by{" "}
                 <Link

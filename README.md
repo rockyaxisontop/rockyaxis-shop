@@ -1,4 +1,4 @@
-# RockyAxis Shop
+# MT-Shop
 
 Shopping app built with:
 
