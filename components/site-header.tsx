@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import storeLogo from "../mt-store.jpeg";
 import {
   ChevronRight,
   Headphones,
@@ -138,13 +140,17 @@ export function SiteHeader() {
           {menuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
         </button>
 
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-lg bg-brand text-sm font-black text-white">
-            MT
-          </span>
-          <span className="hidden text-lg font-extrabold tracking-tight text-ink sm:block">
-            MT Shop
-          </span>
+        <Link
+          href="/"
+          aria-label="MT Store home"
+          className="flex h-9 w-[104px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#05070a] px-1.5 sm:h-10 sm:w-32"
+        >
+          <Image
+            src={storeLogo}
+            alt="MT Store"
+            priority
+            className="h-full w-full object-contain"
+          />
         </Link>
 
         {showGlobalSearch ? <div className="hidden flex-1 md:block">{searchField}</div> : null}
