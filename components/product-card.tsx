@@ -171,56 +171,58 @@ export function ProductCard({
     </div>
   );
 
-  const fallbackThumb = imageSrc && !imageFailed ? imageSrc : null;
-  const thumbnails = showSwatches ? (
-    <div className="flex flex-wrap items-center gap-1 pt-2.5">
-      {visibleSwatches.length > 0 ? (
-        <>
-          {visibleSwatches.map((value) => (
-            <button
-              key={value.label}
-              type="button"
-              title={value.label}
-              aria-label={value.label}
-              onClick={() => onSwatch(value)}
-              onMouseEnter={() => setPreview(value.thumbnail_url ?? null)}
-              onMouseLeave={() => setPreview(null)}
-              onFocus={() => setPreview(value.thumbnail_url ?? null)}
-              onBlur={() => setPreview(null)}
-              className="size-5 cursor-pointer overflow-hidden rounded-full ring-1 ring-border transition hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <img src={value.thumbnail_url ?? undefined} alt="" className="size-full object-cover" />
-            </button>
-          ))}
-          {overflowSwatches > 0 ? (
-            <span className="text-xs text-muted-foreground">{`+${overflowSwatches}`}</span>
-          ) : null}
-        </>
-      ) : (
-        <button
-          type="button"
-          aria-label={product.title}
-          onClick={() => onSelect?.(product)}
-          className="flex size-5 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-muted text-muted-foreground ring-1 ring-border transition hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {fallbackThumb ? (
-            <img src={fallbackThumb} alt="" className="size-full object-cover" />
-          ) : (
-            <ImageOff className="size-2.5" aria-hidden />
-          )}
-        </button>
-      )}
-    </div>
-  ) : null;
+  // Swatch row only exists when there ARE swatches. (It used to render a
+  // circular copy of the product image as a stand-in, which looked like a
+  // stray duplicate thumbnail on mobile.)
+  const thumbnails =
+    showSwatches && (visibleSwatches.length > 0 || overflowSwatches > 0) ? (
+      <div className="flex flex-wrap items-center gap-1 pt-1.5">
+        {visibleSwatches.map((value) => (
+          <button
+            key={value.label}
+            type="button"
+            title={value.label}
+            aria-label={value.label}
+            onClick={() => onSwatch(value)}
+            onMouseEnter={() => setPreview(value.thumbnail_url ?? null)}
+            onMouseLeave={() => setPreview(null)}
+            onFocus={() => setPreview(value.thumbnail_url ?? null)}
+            onBlur={() => setPreview(null)}
+            // Small visual dot, padded hit area so it stays tappable on phones.
+            className="group/swatch -m-1 p-1 ring-0 cursor-pointer focus-visible:outline-none"
+          >
+            <span className="block size-5 overflow-hidden rounded-full ring-1 ring-border transition group-hover/swatch:ring-ring group-focus-visible/swatch:ring-2 group-focus-visible/swatch:ring-ring">
+              <img
+                src={value.thumbnail_url ?? undefined}
+                alt=""
+                loading="lazy"
+                className="size-full object-cover"
+              />
+            </span>
+          </button>
+        ))}
+        {overflowSwatches > 0 ? (
+          <span className="text-xs text-muted-foreground">{`+${overflowSwatches}`}</span>
+        ) : null}
+      </div>
+    ) : null;
 
   const meta = (
-    <div className="flex flex-col gap-1 pt-2.5">
-      {brand ? <span className="truncate text-xs text-muted-foreground">{brand}</span> : null}
-      <span className="truncate text-sm leading-snug font-medium">{product.title}</span>
-      <div className="flex min-h-[1.5rem] items-baseline gap-2 pt-1">
+    <div className="flex flex-col gap-0.5 pt-2 sm:gap-1 sm:pt-2.5">
+      {brand ? (
+        <span className="truncate text-[11px] text-muted-foreground sm:text-xs">{brand}</span>
+      ) : null}
+      {/* Phones get three clamped lines (most titles fit whole at this column
+          width); wider screens truncate to one line as before. */}
+      <span className="line-clamp-3 text-[13px] leading-[1.25] font-medium break-words sm:line-clamp-1 sm:text-sm sm:leading-snug">
+        {product.title}
+      </span>
+      <div className="mt-auto flex items-baseline gap-1.5 pt-0.5 sm:min-h-[1.5rem] sm:gap-2 sm:pt-1">
         {offer ? (
           <>
-            <span className="text-sm font-semibold">{formatPrice(offer.price, locale)}</span>
+            <span className="text-[13px] font-semibold sm:text-sm">
+              {formatPrice(offer.price, locale)}
+            </span>
             {isOnSale(offer.price) && offer.price.compare_at_price ? (
               <span className="text-xs text-muted-foreground line-through">
                 {formatCurrency(offer.price.compare_at_price, offer.price.currency, locale)}
@@ -285,7 +287,7 @@ export function ProductCard({
   return (
     <div
       data-slot="product-card"
-      className={cn("isolate flex h-full flex-col", className)}
+      className={cn("isolate flex h-full min-w-0 flex-col", className)}
       {...props}
     >
       {tap(media)}
