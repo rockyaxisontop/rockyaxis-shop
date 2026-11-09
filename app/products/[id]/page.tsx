@@ -101,17 +101,6 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
                 (product.variants?.selected ?? []).map((option) => [option.name, option.label]),
               )}
             />
-
-            {lowestOffer?.url ? (
-              <a
-                href={lowestOffer.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-10 items-center justify-center rounded-lg border text-sm font-medium hover:bg-accent"
-              >
-                Buy at {lowestOffer.domain ?? "store"}
-              </a>
-            ) : null}
           </div>
         </aside>
       </div>
