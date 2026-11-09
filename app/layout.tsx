@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 
 import { Providers } from "@/components/providers";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 
 import "./globals.css";
 
@@ -24,11 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <SiteHeader />
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6">{children}</main>
-          <footer className="border-t">
-            <div className="mx-auto flex w-full max-w-6xl items-center justify-center px-4 py-6 text-sm text-muted-foreground">
-              <p>© {new Date().getFullYear()} MT-Shop</p>
-            </div>
-          </footer>
+          <SiteFooter />
         </Providers>
       </body>
     </html>

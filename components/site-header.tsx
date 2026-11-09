@@ -154,6 +154,7 @@ export function SiteHeader() {
             src={storeLogo}
             alt="MT Store"
             priority
+            sizes="(max-width: 767px) 104px, 128px"
             className="h-full w-full object-contain"
           />
         </Link>

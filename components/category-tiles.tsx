@@ -34,7 +34,7 @@ const CATEGORIES = [
 /** Circular icon tiles under "Shop by Category". */
 export function CategoryTiles() {
   return (
-    <section className="flex flex-col gap-4">
+    <section id="shop-by-category" className="flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4 border-b border-border pb-3">
         <h2 className="text-lg font-bold tracking-tight text-ink sm:text-[22px]">Shop by Category</h2>
         <Link
