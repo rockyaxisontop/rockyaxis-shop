@@ -1,77 +1,100 @@
 import Link from "next/link";
-import { ArrowRight, PackageSearch, Tag, Zap } from "lucide-react";
+import { ArrowRight, BadgeCheck, Headphones, ShieldCheck, Truck } from "lucide-react";
 
-const categories = [
-  "Home & kitchen",
-  "Phones",
-  "Headphones",
-  "Skincare",
-  "Sneakers",
-  "Backpacks",
+import { CategoryTiles } from "@/components/category-tiles";
+import { PromoBanners } from "@/components/promo-banners";
+import { ProductGrid } from "@/components/product-grid";
+import { SectionHeading } from "@/components/section-heading";
+import { getSuggestedProducts, type SuggestedGroup } from "@/lib/channel3/products";
+
+// Product rows are refreshed at most every 30 minutes.
+export const revalidate = 1800;
+
+const trusted = [
+  { icon: Truck, label: "Free delivery", text: "on orders over Rs 5,000" },
+  { icon: ShieldCheck, label: "Genuine products", text: "warranty included" },
+  { icon: BadgeCheck, label: "Best price", text: "compared across stores" },
+  { icon: Headphones, label: "Support", text: "every day, 9am – 8pm" },
 ];
 
-const perks = [
-  {
-    icon: PackageSearch,
-    title: "Every store, one search",
-    text: "Products from thousands of shops, all in one place with one consistent catalog.",
-  },
-  {
-    icon: Tag,
-    title: "Best price first",
-    text: "Offers are compared per product so you always see the lowest current price.",
-  },
-  {
-    icon: Zap,
-    title: "Fast by design",
-    text: "Firebase runs straight from the browser — no backend, no extra hops.",
-  },
-];
+export default async function HomePage() {
+  const groups = await getSuggestedProducts(4);
+  const [first, ...rest] = groups;
 
-export default function HomePage() {
   return (
-    <div className="flex flex-col gap-10 py-4 sm:gap-16 sm:py-10">
-      <section className="flex flex-col items-center gap-4 px-1 pt-4 text-center sm:gap-6 sm:pt-0">
-        <h1 className="max-w-3xl text-[2rem] leading-[1.12] font-semibold tracking-tight text-balance sm:text-6xl">
-          Find it anywhere.
-          <br />
-          <span className="text-muted-foreground">Buy it for less.</span>
-        </h1>
-        <p className="max-w-xl text-pretty text-[15px] text-muted-foreground sm:text-base">
-          Search products from thousands of shops, compare live prices and keep your favourites in
-          one place.
-        </p>
-
-        <Link
-          href="/search"
-          className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.99] sm:w-auto sm:rounded-lg"
-        >
-          Start searching
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-        </Link>
-
-        <div className="flex w-full flex-wrap justify-center gap-2">
-          {categories.map((category) => (
+    <div className="flex flex-col gap-8 py-4 sm:gap-10 sm:py-6">
+      {/* Hero */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#011627] via-[#0b3d59] to-[#1d7fa4] px-5 py-8 text-white sm:px-10 sm:py-14">
+        <div className="max-w-xl">
+          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold backdrop-blur">
+            Thousands of stores, one checkout
+          </span>
+          <h1 className="text-3xl leading-[1.1] font-extrabold tracking-tight text-balance sm:text-5xl">
+            Everything you need, at the best price.
+          </h1>
+          <p className="mt-3 max-w-md text-sm text-white/80 sm:text-base">
+            Phones, laptops, audio and everyday essentials — compare live prices and buy from the
+            store you trust.
+          </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             <Link
-              key={category}
-              href={`/search?q=${encodeURIComponent(category)}`}
-              className="rounded-full border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground sm:py-1.5"
+              href="/search"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-6 text-sm font-bold text-[#011627] transition hover:bg-white/90"
             >
-              {category}
+              Shop now
+              <ArrowRight className="size-4" />
             </Link>
-          ))}
+            <Link
+              href="/search?q=smartphones"
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-white/30 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10"
+            >
+              Browse smartphones
+            </Link>
+          </div>
         </div>
+        <span className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10 sm:size-80" />
+        <span className="pointer-events-none absolute -right-4 -bottom-24 size-48 rounded-full bg-[#2da9d6]/30 sm:size-72" />
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        {perks.map(({ icon: Icon, title, text }) => (
-          <div key={title} className="rounded-xl border p-4 sm:p-5">
-            <Icon className="mb-2 size-5 text-muted-foreground sm:mb-3" />
-            <h2 className="mb-1 font-medium">{title}</h2>
-            <p className="text-sm text-muted-foreground">{text}</p>
+      <CategoryTiles />
+
+      <PromoBanners />
+
+      {/* First product row */}
+      {first && first.products.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          <SectionHeading
+            title={first.title}
+            subtitle="Hand-picked everyday essentials"
+            href={`/search?q=${encodeURIComponent(first.query)}`}
+          />
+          <ProductGrid products={first.products} />
+        </section>
+      ) : null}
+
+      {/* Trust strip */}
+      <section className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-white p-4 sm:grid-cols-4 sm:p-5">
+        {trusted.map(({ icon: Icon, label, text }) => (
+          <div key={label} className="flex items-start gap-2.5">
+            <Icon className="mt-0.5 size-5 shrink-0 text-brand" />
+            <div>
+              <p className="text-[13px] font-semibold text-ink">{label}</p>
+              <p className="text-[11px] text-ink-soft">{text}</p>
+            </div>
           </div>
         ))}
       </section>
+
+      {/* Remaining product rows */}
+      {rest.map((group: SuggestedGroup) => (
+        <section key={group.key} className="flex flex-col gap-4">
+          <SectionHeading
+            title={group.title}
+            href={`/search?q=${encodeURIComponent(group.title)}`}
+          />
+          <ProductGrid products={group.products} />
+        </section>
+      ))}
     </div>
   );
 }

@@ -77,7 +77,7 @@ export const SUGGESTED_GROUPS = [
   { key: "sports", title: "Fitness & outdoors", query: "fitness outdoor gear" },
 ] as const;
 
-export type SuggestedGroup = { key: string; title: string; products: Product[] };
+export type SuggestedGroup = { key: string; title: string; query: string; products: Product[] };
 
 /** Runs the suggestion queries in parallel; failures are skipped, not thrown. */
 export async function getSuggestedProducts(limit = 8): Promise<SuggestedGroup[]> {
@@ -85,9 +85,9 @@ export async function getSuggestedProducts(limit = 8): Promise<SuggestedGroup[]>
     SUGGESTED_GROUPS.map(async ({ key, title, query }) => {
       try {
         const { products } = await searchProducts({ query, limit });
-        return { key, title, products };
+        return { key, title, query, products };
       } catch {
-        return { key, title, products: [] as Product[] };
+        return { key, title, query, products: [] as Product[] };
       }
     }),
   );

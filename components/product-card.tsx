@@ -116,9 +116,16 @@ export function ProductCard({
 
   const displayedSrc = activePreview ?? activeHover ?? imageSrc;
 
+  const onSale = offer ? isOnSale(offer.price) && Boolean(offer.price.compare_at_price) : false;
+  const discountPercent =
+    onSale && offer?.price.compare_at_price
+      ? Math.round(100 - (offer.price.price / offer.price.compare_at_price) * 100)
+      : 0;
+  const inStock = offer?.availability === "InStock";
+
   const media = (
     <div
-      className="relative aspect-square overflow-hidden rounded-md bg-muted"
+      className="relative aspect-square overflow-hidden rounded-lg bg-white"
       onMouseEnter={() => {
         setImageHovered(true);
         window.dispatchEvent(
@@ -163,8 +170,13 @@ export function ProductCard({
           <ImageOff className="size-8" aria-hidden />
         </div>
       )}
+      {discountPercent > 0 && !soldOut ? (
+        <span className="absolute top-2 left-2 rounded bg-save px-1.5 py-0.5 text-[10px] font-extrabold text-ink sm:text-[11px]">
+          -{discountPercent}%
+        </span>
+      ) : null}
       {soldOut ? (
-        <Badge variant="secondary" className="absolute right-2 top-2">
+        <Badge variant="secondary" className="absolute top-2 right-2">
           Sold out
         </Badge>
       ) : null}
@@ -208,29 +220,49 @@ export function ProductCard({
     ) : null;
 
   const meta = (
-    <div className="flex flex-col gap-0.5 pt-2 sm:gap-1 sm:pt-2.5">
+    <div className="flex flex-1 flex-col gap-0.5 pt-2 sm:gap-1 sm:pt-2.5">
       {brand ? (
-        <span className="truncate text-[11px] text-muted-foreground sm:text-xs">{brand}</span>
+        <span className="truncate text-[10px] font-bold tracking-wider text-ink-soft uppercase sm:text-[11px]">
+          {brand}
+        </span>
       ) : null}
-      {/* Phones get three clamped lines (most titles fit whole at this column
-          width); wider screens truncate to one line as before. */}
-      <span className="line-clamp-3 text-[13px] leading-[1.25] font-medium break-words sm:line-clamp-1 sm:text-sm sm:leading-snug">
+
+      {/* Phones get three clamped lines; wider screens one. */}
+      <span className="line-clamp-3 text-[13px] leading-[1.25] font-semibold break-words text-ink sm:line-clamp-2 sm:text-sm sm:leading-snug">
         {product.title}
       </span>
-      <div className="mt-auto flex items-baseline gap-1.5 pt-0.5 sm:min-h-[1.5rem] sm:gap-2 sm:pt-1">
+
+      <div className="mt-auto flex flex-wrap items-baseline gap-x-1.5 pt-1">
         {offer ? (
           <>
-            <span className="text-[13px] font-semibold sm:text-sm">
+            <span className="text-[13px] font-bold text-ink sm:text-[15px]">
               {formatPrice(offer.price, locale)}
             </span>
-            {isOnSale(offer.price) && offer.price.compare_at_price ? (
-              <span className="text-xs text-muted-foreground line-through">
+            {onSale && offer.price.compare_at_price ? (
+              <span className="text-[11px] text-ink-soft line-through sm:text-xs">
                 {formatCurrency(offer.price.compare_at_price, offer.price.currency, locale)}
               </span>
             ) : null}
           </>
         ) : null}
       </div>
+
+      {offer ? (
+        <span
+          className={cn(
+            "w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold sm:text-[11px]",
+            inStock ? "bg-stock-bg text-stock" : "bg-surface-2 text-ink-soft",
+          )}
+        >
+          {inStock ? "In stock" : "Check availability"}
+        </span>
+      ) : null}
+
+      {inStock ? (
+        <span className="mt-1.5 flex h-8 w-full items-center justify-center rounded-md bg-brand text-[11px] font-bold text-white sm:text-xs">
+          Buy now
+        </span>
+      ) : null}
     </div>
   );
 
@@ -287,7 +319,10 @@ export function ProductCard({
   return (
     <div
       data-slot="product-card"
-      className={cn("isolate flex h-full min-w-0 flex-col", className)}
+      className={cn(
+        "group/card isolate flex h-full min-w-0 flex-col rounded-xl border border-border bg-white p-2 transition-all hover:border-brand/40 hover:shadow-lg sm:p-2.5",
+        className,
+      )}
       {...props}
     >
       {tap(media)}

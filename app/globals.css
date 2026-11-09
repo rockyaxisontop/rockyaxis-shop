@@ -3,26 +3,46 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Shop palette (teal accent + warm promo gradients on a cool off-white base). */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-brand: rgb(29 127 164);
+  --color-brand-dark: rgb(1 22 39);
+  --color-brand-tint: rgb(236 248 252);
+  --color-ink: rgb(2 6 23);
+  --color-ink-soft: rgb(100 116 139);
+  --color-surface: rgb(249 251 252);
+  --color-surface-2: rgb(246 248 250);
+  --color-price: rgb(180 35 24);
+  --color-save: rgb(255 221 72);
+  --color-stock-bg: rgb(236 253 245);
+  --color-stock: rgb(4 120 87);
+
+  --gradient-promo: linear-gradient(135deg, rgb(243 109 37) 0%, rgb(238 56 94) 100%);
+  --gradient-deal: linear-gradient(274.11deg, #f04724 -52%, #f5752b -44%, #f9b330 -29%, #ffc937 -19%, #f4662a 9%, #ee3274 44%, #c63585 67%, #5f4da0 111%);
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.2 0.02 250);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.55 0.09 220);
+  --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted: oklch(0.97 0.005 240);
+  --muted-foreground: oklch(0.53 0.02 250);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.93 0.008 240);
+  --input: oklch(0.93 0.008 240);
+  --ring: oklch(0.55 0.09 220);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
