@@ -53,12 +53,17 @@ export function SiteHeader() {
     <div className="size-9 shrink-0 animate-pulse rounded-full bg-surface-2" />
   ) : user ? (
     <div className="flex shrink-0 items-center gap-2">
-      <span
-        className="grid size-9 place-items-center rounded-full bg-brand text-xs font-semibold text-white"
-        title={user.displayName ?? user.email ?? ""}
+      <Link
+        href="/profile"
+        aria-label="Your Profile"
+        title="Your Profile"
+        className="flex items-center gap-2 text-xs font-semibold text-ink-soft transition-colors hover:text-brand"
       >
-        {initial}
-      </span>
+        <span className="grid size-9 place-items-center rounded-full bg-brand text-xs font-semibold text-white">
+          {initial}
+        </span>
+        <span className="hidden lg:inline">Your Profile</span>
+      </Link>
       <button
         type="button"
         onClick={() => {

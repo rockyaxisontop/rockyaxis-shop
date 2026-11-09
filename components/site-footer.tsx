@@ -57,7 +57,7 @@ export function SiteFooter() {
             </h2>
             <p className="mt-2 text-sm leading-6 text-ink-soft">
               Maketrend.com is a tech buying platform where customers can discover, compare, and buy
-              genuine gadgets with confidence. GBNstore combines curated buying guides, expert
+              genuine gadgets with confidence. MTstore combines curated buying guides, expert
               recommendations, and hands-on experience zones to help you choose the right tech for
               your needs.
             </p>
