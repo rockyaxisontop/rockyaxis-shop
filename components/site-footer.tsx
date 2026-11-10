@@ -1,8 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Facebook, Instagram, Mail, MapPin, Music2, Phone, Youtube } from "lucide-react";
 
-import storeLogo from "../mt-store-white.png";
+
 
 const popularSearches = [
   "mobile phones",
@@ -43,14 +42,9 @@ export function SiteFooter() {
         <div className="grid gap-9 py-10 sm:py-12 md:grid-cols-[1.4fr_1fr_1fr] md:gap-10">
           <section id="about" aria-labelledby="footer-about-title" className="max-w-lg">
             <Link href="/" aria-label="MT Store home" className="inline-flex">
-              <Image
-                src={storeLogo}
-                alt="MT Store"
-                width={1280}
-                height={439}
-                sizes="128px"
-                className="h-10 w-32 object-contain"
-              />
+              <span className="text-xl font-extrabold tracking-tight text-ink">
+                MT<span className="text-brand">-Shop</span>
+              </span>
             </Link>
             <h2 id="footer-about-title" className="mt-4 text-sm font-bold text-ink">
               About MT Store

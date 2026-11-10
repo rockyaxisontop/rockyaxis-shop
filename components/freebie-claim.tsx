@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
+import { addToCart } from "@/lib/firebase/cart";
 import { freebieApi } from "@/lib/freebies/client";
 import type { PublicCampaign } from "@/lib/freebies/types";
 import { cn } from "@/lib/utils";
@@ -68,10 +69,23 @@ export function FreebieClaim({ code }: { code: string }) {
   }
 
   async function startMine() {
+    if (!user || !campaign) return;
     setStarting(true);
     setMessage(null);
     try {
       const { campaign: mine } = await freebieApi.startFromCode(code);
+
+      // Put the product in their cart so it's waiting for them at checkout.
+      await addToCart(user.uid, {
+        productId: campaign.product.productId,
+        title: campaign.product.title,
+        image: campaign.product.image,
+        brand: campaign.product.brand,
+        price: campaign.product.price,
+        currency: campaign.product.currency,
+        url: campaign.product.url,
+      }).catch(() => {});
+
       router.push(`/freebie/mine/${mine.id}`);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Couldn't start your campaign.");
