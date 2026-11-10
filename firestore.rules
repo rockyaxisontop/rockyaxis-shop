@@ -23,8 +23,22 @@ service cloud.firestore {
 
     // orders/{uid}/history/{orderId} – past orders kept after checkout.
     match /orders/{uid}/history/{orderId} {
-      allow read, create: if isOwner(uid);
-      allow update, delete: if false;
+      // Order records, especially zero-price referral orders, are written by
+      // the trusted server only. Clients can read their own history.
+      allow read: if isOwner(uid);
+      allow create, update, delete: if false;
+    }
+
+    // Referral campaigns and claims are server-managed. Never trust a client
+    // to increment progress or mark a campaign complete.
+    match /freebieCampaigns/{document=**} {
+      allow read, write: if false;
+    }
+    match /freebieCampaignIndexes/{document=**} {
+      allow read, write: if false;
+    }
+    match /freebieReferralClaims/{document=**} {
+      allow read, write: if false;
     }
   }
 }
