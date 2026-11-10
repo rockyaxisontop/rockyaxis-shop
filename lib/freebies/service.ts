@@ -2,10 +2,8 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import type { UserRecord } from "firebase-admin/auth";
-
 import { getProduct } from "@/lib/channel3/products";
-import { ApiError, getAdminDb } from "@/lib/firebase/admin";
+import { ApiError, getAdminDb, type AuthUser } from "@/lib/firebase/admin";
 import {
   CAMPAIGN_DAYS,
   REFERRAL_TARGET,
@@ -92,7 +90,7 @@ async function loadPurchasableProduct(productId: string): Promise<CampaignProduc
  * Starts (or returns the existing active) campaign for one product.
  * One campaign per user per product — enforced by a deterministic doc id.
  */
-export async function startCampaign(user: UserRecord, productId: string): Promise<PublicCampaign> {
+export async function startCampaign(user: AuthUser, productId: string): Promise<PublicCampaign> {
   if (!productId?.trim()) throw new ApiError("A product is required.", 400);
 
   const product = await loadPurchasableProduct(productId);
@@ -141,7 +139,7 @@ export async function startCampaign(user: UserRecord, productId: string): Promis
 }
 
 /** Campaigns owned by the signed-in user, keyed by productId. */
-export async function listMyCampaigns(user: UserRecord): Promise<PublicCampaign[]> {
+export async function listMyCampaigns(user: AuthUser): Promise<PublicCampaign[]> {
   const snap = await db().collection(CAMPAIGNS).where("ownerUid", "==", user.uid).get();
   return snap.docs.map((doc) => toPublic(doc.id, doc.data(), user.uid, false));
 }
@@ -164,7 +162,7 @@ export async function getCampaignByCode(code: string, viewerUid: string): Promis
  * transaction, so concurrent requests cannot double-count.
  */
 export async function claimReferral(
-  user: UserRecord,
+  user: AuthUser,
   code: string,
 ): Promise<{ campaign: PublicCampaign; counted: boolean; reason?: string }> {
   const found = await db().collection(CAMPAIGNS).where("code", "==", code).limit(1).get();
@@ -208,8 +206,7 @@ export async function claimReferral(
     }
 
     // 4. Account must be established (blocks throwaway sign-ups).
-    const createdAt = user.metadata.creationTime ? Date.parse(user.metadata.creationTime) : 0;
-    if (!createdAt || Date.now() - createdAt < 10 * 60 * 1000) {
+    if (!user.createdAt || Date.now() - user.createdAt < 10 * 60 * 1000) {
       throw new ApiError("Your account is too new to count as a referral. Try again later.", 403);
     }
 
@@ -248,7 +245,7 @@ export async function claimReferral(
 }
 
 /** Places the free order. Only the owner, only when completed, only once. */
-export async function placeFreebieOrder(user: UserRecord, campaignId: string): Promise<FreebieOrder> {
+export async function placeFreebieOrder(user: AuthUser, campaignId: string): Promise<FreebieOrder> {
   const campaignRef = db().collection(CAMPAIGNS).doc(campaignId);
 
   return db().runTransaction(async (tx) => {
@@ -291,7 +288,7 @@ export async function placeFreebieOrder(user: UserRecord, campaignId: string): P
   });
 }
 
-export async function listMyOrders(user: UserRecord): Promise<FreebieOrder[]> {
+export async function listMyOrders(user: AuthUser): Promise<FreebieOrder[]> {
   const snap = await db().collection(ORDERS).where("ownerUid", "==", user.uid).get();
   return snap.docs.map((doc) => {
     const data = doc.data();

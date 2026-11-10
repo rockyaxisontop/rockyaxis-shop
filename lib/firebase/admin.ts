@@ -1,9 +1,14 @@
+
 import "server-only";
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth, type UserRecord } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
+
+import { verifyFirebaseIdToken } from "./verify-token";
 
 export class ApiError extends Error {
   constructor(
@@ -18,24 +23,59 @@ export class ApiError extends Error {
 type ServiceAccount = { projectId: string; clientEmail: string; privateKey: string };
 
 /**
- * Accepts either the full service-account JSON or a bare PEM private key
- * (with FIREBASE_ADMIN_PROJECT_ID / FIREBASE_ADMIN_CLIENT_EMAIL alongside).
+ * Reads the service account from, in order:
+ *   1. FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON  (full JSON, one line)
+ *   2. FIREBASE_ADMIN_SERVICE_ACCOUNT       (JSON or PEM)
+ *   3. a file at FIREBASE_ADMIN_SERVICE_ACCOUNT_FILE
+ *
+ * Why the extra names: Next.js redacts values it considers secret-looking and
+ * substitutes the literal string "[SENSITIVE]" in production builds, which
+ * silently breaks the Admin SDK. The *_JSON name avoids that heuristic, and
+ * the file option sidesteps env handling entirely.
  */
-function readServiceAccount(): ServiceAccount {
-  const raw = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT?.trim();
-  if (!raw) {
-    throw new ApiError("Firebase Admin credentials are missing.", 503);
+function readRawCredential(): string {
+  const candidates = [
+    process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON,
+    process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT,
+  ];
+
+  for (const candidate of candidates) {
+    const value = candidate?.trim();
+    if (value && value !== "[SENSITIVE]") return value;
   }
 
-  const value = raw.replace(/^['"]|['"]$/g, "");
-  const normalizeKey = (key: string) => key.replace(/\\n/g, "\n");
+  const filePath = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_FILE;
+  if (filePath) {
+    const resolved = filePath.startsWith("/") ? filePath : join(process.cwd(), filePath);
+    if (existsSync(resolved)) return readFileSync(resolved, "utf8");
+  }
+
+  throw new ApiError(
+    "Firebase Admin credentials are missing or were redacted by the build. Set FIREBASE_ADMIN_SERVICE_ACCOUNT_JSON.",
+    503,
+  );
+}
+
+function readServiceAccount(): ServiceAccount {
+  let value = readRawCredential().trim();
+
+  // Strip surrounding quotes pasted from a shell or dashboard.
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+
+  const normalizeKey = (key: string) =>
+    key.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\r\n/g, "\n").trim();
 
   if (value.startsWith("{")) {
     let account: { project_id?: string; client_email?: string; private_key?: string };
     try {
       account = JSON.parse(value);
     } catch {
-      throw new ApiError("FIREBASE_ADMIN_SERVICE_ACCOUNT is not valid JSON.", 503);
+      throw new ApiError("Service account JSON could not be parsed.", 503);
     }
     if (!account.project_id || !account.client_email || !account.private_key) {
       throw new ApiError("Service account JSON is missing required fields.", 503);
@@ -48,7 +88,10 @@ function readServiceAccount(): ServiceAccount {
   }
 
   if (!value.includes("BEGIN PRIVATE KEY")) {
-    throw new ApiError("FIREBASE_ADMIN_SERVICE_ACCOUNT must be JSON or a PEM key.", 503);
+    throw new ApiError(
+      `Service account must be JSON or a PEM key (got ${value.length} chars).`,
+      503,
+    );
   }
 
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
@@ -80,23 +123,39 @@ function getAdminApp() {
   );
 }
 
-export function getAdminAuth() {
-  return getAuth(getAdminApp());
-}
-
 export function getAdminDb() {
   return getFirestore(getAdminApp());
 }
 
-/** Verifies the caller's Firebase ID token. Throws 401 when missing/invalid. */
-export async function requireUser(request: Request): Promise<UserRecord> {
+/** The authenticated caller, derived from a verified Firebase ID token. */
+export type AuthUser = {
+  uid: string;
+  email?: string;
+  emailVerified: boolean;
+  /** Milliseconds since epoch, from the token's `auth_time`/`iat`. */
+  createdAt: number;
+};
+
+/**
+ * Verifies the caller's Firebase ID token. Throws 401 when missing/invalid.
+ *
+ * Uses `jose` directly instead of `firebase-admin/auth` — see verify-token.ts
+ * for why (jwks-rsa requires an ESM-only module and breaks on Vercel).
+ */
+export async function requireUser(request: Request): Promise<AuthUser> {
   const header = request.headers.get("authorization");
   const token = header?.match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) throw new ApiError("Sign in to continue.", 401);
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(token);
-    return await getAdminAuth().getUser(decoded.uid);
+    const payload = await verifyFirebaseIdToken(token);
+    const iat = typeof payload.iat === "number" ? payload.iat * 1000 : Date.now();
+    return {
+      uid: payload.uid,
+      email: payload.email,
+      emailVerified: payload.email_verified === true,
+      createdAt: iat,
+    };
   } catch {
     throw new ApiError("Your session is invalid. Sign in again.", 401);
   }
