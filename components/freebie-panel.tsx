@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, Gift, Loader2, Share2, Sparkles } from "lucide-react";
 
 import { freebieApi } from "@/lib/freebies/client";
+import { getCampaignShareMessage } from "@/lib/freebies/share";
 import type { PublicCampaign } from "@/lib/freebies/types";
 import { cn } from "@/lib/utils";
 
@@ -61,20 +62,32 @@ export function FreebiePanel({
     typeof window !== "undefined" ? `${window.location.origin}/freebie/${campaign.code}` : "";
 
   async function copy() {
+    if (!campaign) return;
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(`${getCampaignShareMessage(campaign)}\n${link}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("Couldn't copy — select the link manually.");
+      setError("Couldn't copy the invite — select the link manually.");
     }
   }
 
   async function share() {
-    if (navigator.share) {
-      await navigator.share({ title: "Help me get this free!", url: link }).catch(() => { });
-    } else {
-      void copy();
+    if (!campaign) return;
+    if (!navigator.share) {
+      await copy();
+      return;
+    }
+    try {
+      await navigator.share({
+        title: `Help unlock ${campaign.product.title}`,
+        text: getCampaignShareMessage(campaign),
+        url: link,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        setError("Couldn't open the share menu. Copy the invite instead.");
+      }
     }
   }
 

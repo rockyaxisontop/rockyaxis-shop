@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Gift, Loader2, Share2, Users } from "lucide-react";
+import { Check, Copy, Gift, Loader2, LockKeyhole, Share2, Users } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
 import { FreebieOrderButton } from "@/components/freebie-order-button";
 import { freebieApi } from "@/lib/freebies/client";
+import { getCampaignShareMessage } from "@/lib/freebies/share";
 import type { PublicCampaign } from "@/lib/freebies/types";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
   const [campaign, setCampaign] = useState<PublicCampaign | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [copied, setCopied] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -61,18 +63,40 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
   const percent = Math.min(100, Math.round((campaign.referralCount / campaign.target) * 100));
   const done = campaign.status === "completed";
   const remaining = Math.max(0, campaign.target - campaign.referralCount);
+  const price = new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: campaign.product.currency,
+  }).format(campaign.product.price);
 
   async function copy() {
-    await navigator.clipboard.writeText(link).catch(() => { });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (!campaign) return;
+    setShareError(null);
+    try {
+      await navigator.clipboard.writeText(`${getCampaignShareMessage(campaign)}\n${link}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setShareError("Couldn't copy the invite. Please copy the campaign link below.");
+    }
   }
 
   async function share() {
-    if (navigator.share) {
-      await navigator.share({ title: "Help me get this free!", url: link }).catch(() => { });
-    } else {
-      void copy();
+    if (!campaign) return;
+    setShareError(null);
+    if (!navigator.share) {
+      await copy();
+      return;
+    }
+    try {
+      await navigator.share({
+        title: `Help unlock ${campaign.product.title}`,
+        text: getCampaignShareMessage(campaign),
+        url: link,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name !== "AbortError") {
+        setShareError("Couldn't open the share menu. Copy the invite instead.");
+      }
     }
   }
 
@@ -94,7 +118,13 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
               <img src={campaign.product.image} alt="" className="size-full object-cover" />
             ) : null}
           </div>
-          <p className="line-clamp-2 text-sm font-semibold text-ink">{campaign.product.title}</p>
+          <div className="min-w-0">
+            <p className="line-clamp-2 text-sm font-semibold text-ink">{campaign.product.title}</p>
+            <p className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-xs text-ink-soft line-through">{price}</span>
+              <span className="text-sm font-extrabold text-stock">FREE when unlocked</span>
+            </p>
+          </div>
         </div>
 
         <div className="mt-4">
@@ -115,12 +145,24 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
           </div>
         </div>
 
-        {done ? (
-          <div className="mt-5">
+        <div className="mt-5">
+          {done ? (
             <FreebieOrderButton campaign={campaign} />
-          </div>
-        ) : (
-          <div className="mt-5 flex gap-2">
+          ) : (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="inline-flex h-11 w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg bg-surface-2 text-sm font-bold text-ink-soft"
+            >
+              <LockKeyhole className="size-4" />
+              Order Now — unlock at {campaign.target} referrals
+            </button>
+          )}
+        </div>
+
+        {!done ? (
+          <div className="mt-3 flex gap-2">
             <button
               type="button"
               onClick={copy}
@@ -138,7 +180,14 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
               Share
             </button>
           </div>
-        )}
+        ) : null}
+
+        {shareError ? <p role="alert" className="mt-2 text-left text-xs text-destructive">{shareError}</p> : null}
+        <p className="mt-3 text-xs text-ink-soft">
+          {done
+            ? "Your free order is ready to place. Buying directly remains a separate option on the retailer's site."
+            : `Invite ${campaign.target} unique, email-verified people within 7 days to unlock the free order. Helping does not require a purchase.`}
+        </p>
 
         <p className="mt-3 truncate rounded-lg bg-surface-2 px-3 py-2 text-[11px] text-ink-soft">
           {link}

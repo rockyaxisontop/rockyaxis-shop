@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Gift,
   Loader2,
+  LockKeyhole,
   PartyPopper,
   Share2,
   ShoppingBag,
@@ -239,10 +240,21 @@ function CheckoutItem({
             <FreebieOrderButton campaign={campaign!} />
           </div>
         ) : active ? (
-          <p className="flex flex-1 items-center gap-1.5 text-xs text-ink-soft">
-            <Sparkles className="size-3.5 text-brand" />
-            Campaign running — keep sharing to unlock it.
-          </p>
+          <div className="flex flex-1 flex-col gap-2">
+            <p className="flex items-center gap-1.5 text-xs text-ink-soft">
+              <Sparkles className="size-3.5 text-brand" />
+              Campaign running — {campaign.target - campaign.referralCount} more verified referrals to unlock.
+            </p>
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="inline-flex h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-2 text-sm font-bold text-ink-soft"
+            >
+              <LockKeyhole className="size-4" />
+              Order Now — unlock at {campaign.target} referrals
+            </button>
+          </div>
         ) : (
           <button
             type="button"

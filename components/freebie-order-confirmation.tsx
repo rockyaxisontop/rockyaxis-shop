@@ -59,7 +59,7 @@ export function FreebieOrderConfirmation({ orderId }: { orderId: string }) {
         <CheckCircle2 className="mx-auto size-12 text-stock" />
         <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-ink">Order confirmed!</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Your freebie order was placed successfully. We&apos;ll contact you to arrange delivery.
+          Your freebie order was placed successfully. Please allow 1–2 days for delivery; we&apos;ll contact you to confirm the details.
         </p>
 
         <div className="mt-5 flex items-center gap-3 rounded-xl border border-border bg-white p-3 text-left">
