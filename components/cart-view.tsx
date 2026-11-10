@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Gift, House, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { House, Minus, Plus, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
 import { Button } from "@/components/ui/button";
@@ -155,22 +155,18 @@ export function CartView() {
               <span className="font-semibold">{formatPrice(total, currency)}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Pay at the retailer, or choose one product for a freebie referral campaign.
+              Checkout happens on the retailer&apos;s site.
             </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <Button asChild className="h-11 w-full">
-                <Link href="/checkout?mode=pay">
-                  <ShoppingBag className="size-4" />
-                  Pay Now
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="h-11 w-full border-brand text-brand hover:bg-brand-tint">
-                <Link href="/checkout?mode=free">
-                  <Gift className="size-4" />
-                  Order Now Free
-                </Link>
-              </Button>
-            </div>
+            {items.find((item) => item.url)?.url ? (
+              <a
+                href={items.find((item) => item.url)!.url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Continue to store
+              </a>
+            ) : null}
           </aside>
         </div>
       )}
