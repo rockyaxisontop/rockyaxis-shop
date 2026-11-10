@@ -5,6 +5,8 @@ import Link from "next/link";
 import { House, Minus, Plus, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
+import { FreebiePanel, useFreebieCampaigns } from "@/components/freebie-panel";
+import { FreebieOrderButton } from "@/components/freebie-order-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cartItemId, removeFromCart, setCartQuantity, subscribeCart, type CartItem } from "@/lib/firebase/cart";
@@ -13,6 +15,7 @@ export function CartView() {
   const { user, loading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
+  const { campaigns, upsert } = useFreebieCampaigns(Boolean(user));
   const homeLink = (
     <Link
       href="/"
@@ -113,6 +116,16 @@ export function CartView() {
                       </p>
                     ) : null}
                     <p className="text-sm font-semibold">{formatPrice(item.price, item.currency)}</p>
+
+                    <FreebiePanel
+                      productId={item.productId}
+                      campaign={campaigns[item.productId]}
+                      onCampaign={upsert}
+                    />
+
+                    {campaigns[item.productId]?.status === "completed" ? (
+                      <FreebieOrderButton campaign={campaigns[item.productId]} />
+                    ) : null}
                   </div>
 
                   <div className="flex shrink-0 flex-col items-end justify-between gap-2">

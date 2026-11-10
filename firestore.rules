@@ -26,5 +26,25 @@ service cloud.firestore {
       allow read, create: if isOwner(uid);
       allow update, delete: if false;
     }
+
+    // ---------------------------------------------------------------------
+    // Freebie referral system — SERVER ONLY.
+    //
+    // Every read and write goes through /api/freebies/* using the Admin SDK,
+    // which bypasses these rules. Clients are denied outright so nobody can
+    // forge a referral count, mark a campaign complete, or read someone
+    // else's progress by calling the Firestore REST API directly.
+    // ---------------------------------------------------------------------
+    match /freebieCampaigns/{campaignId} {
+      allow read, write: if false;
+    }
+
+    match /freebieReferrals/{referralId} {
+      allow read, write: if false;
+    }
+
+    match /freebieOrders/{orderId} {
+      allow read, write: if false;
+    }
   }
 }
