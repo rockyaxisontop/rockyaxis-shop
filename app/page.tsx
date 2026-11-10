@@ -69,7 +69,7 @@ export default async function HomePage() {
 
       <CategoryTiles />
 
-      <PromoBanners />
+      <PromoBanners groups={groups} />
 
       {groups.length === 0 ? (
         <p role="status" className="rounded-lg border border-border bg-white px-4 py-3 text-sm text-ink-soft">

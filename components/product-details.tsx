@@ -11,7 +11,7 @@ import { ProductAttributes } from "@/components/product-attributes";
 import { ProductRecommendations } from "@/components/product-recommendations";
 import { VariantSelector } from "@/components/variant-selector";
 import type { SimilarFetcher } from "@/hooks/use-product-recommendations";
-import { formatCurrency, formatPrice, isInStock, isOnSale, leadOffer } from "@/lib/format";
+import { discountPercent, formatCurrency, formatPrice, isInStock, isOnSale, leadOffer } from "@/lib/format";
 
 export interface ProductDetailsRecommendationsConfig {
   limit?: number;
@@ -143,19 +143,25 @@ function Header({ className, ...rest }: React.ComponentProps<"div">) {
   const { product, locale } = useProductDetails("ProductDetailsHeader");
   const brands = (product.brands ?? []).map((brand) => brand.name).filter(Boolean);
   const offer = leadOffer(product.offers);
+  const savings = offer ? discountPercent(offer.price) : null;
 
   return (
-    <div className={cn("flex flex-col gap-2", className)} {...rest}>
+    <div className={cn("flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5", className)} {...rest}>
       {brands.length > 0 ? (
-        <span className="text-sm text-muted-foreground">{brands.join(" · ")}</span>
+        <span className="text-xs font-bold tracking-widest text-brand uppercase">{brands.join(" · ")}</span>
       ) : null}
-      <h1 className="text-xl leading-tight font-semibold">{product.title}</h1>
+      <h1 className="text-xl leading-tight font-bold tracking-tight text-ink sm:text-2xl">{product.title}</h1>
       {offer ? (
-        <div className="flex items-center gap-3 pt-1">
-          <span className="text-2xl font-semibold">{formatPrice(offer.price, locale)}</span>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 border-t border-border pt-4">
+          <span className="text-3xl font-extrabold tracking-tight text-ink">{formatPrice(offer.price, locale)}</span>
           {isOnSale(offer.price) && offer.price.compare_at_price ? (
-            <span className="text-base text-muted-foreground line-through">
+            <span className="text-sm text-muted-foreground line-through">
               {formatCurrency(offer.price.compare_at_price, offer.price.currency, locale)}
+            </span>
+          ) : null}
+          {savings !== null && savings > 0 ? (
+            <span className="rounded-full bg-stock-bg px-2.5 py-1 text-xs font-bold text-stock">
+              Save {savings}%
             </span>
           ) : null}
         </div>

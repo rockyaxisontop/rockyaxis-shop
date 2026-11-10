@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Product } from "@channel3/sdk/resources";
 
 import type { SuggestedGroup } from "@/lib/channel3/products";
+import { discountPercent, formatCurrency } from "@/lib/format";
 
 /**
  * Daily-life suggestions shown before the user types anything.
@@ -37,13 +38,14 @@ function ProductTile({ product }: { product: Product }) {
         : best,
     undefined,
   );
+  const savings = cheapest ? discountPercent(cheapest.price) : null;
 
   return (
     <Link
       href={`/products/${product.id}`}
-      className="group flex flex-col overflow-hidden rounded-xl border transition-shadow hover:shadow-md active:opacity-90"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md active:opacity-90"
     >
-      <div className="relative aspect-[4/3] bg-muted sm:aspect-square">
+      <div className="relative aspect-[4/3] bg-surface-2 sm:aspect-square">
         {product.images?.[0]?.url ? (
           <Image
             src={product.images[0].url}
@@ -53,6 +55,11 @@ function ProductTile({ product }: { product: Product }) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : null}
+        {savings !== null && savings > 0 ? (
+          <span className="absolute left-2 top-2 rounded-full bg-save px-2 py-1 text-[10px] font-extrabold text-ink">
+            {savings}% off
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-1 p-2.5 sm:p-3">
@@ -60,14 +67,20 @@ function ProductTile({ product }: { product: Product }) {
         {product.brands?.[0]?.name ? (
           <p className="truncate text-xs text-muted-foreground">{product.brands[0].name}</p>
         ) : null}
-        <p className="mt-auto pt-1 text-sm font-semibold">
-          {cheapest?.price?.price != null
-            ? new Intl.NumberFormat("en", {
-              style: "currency",
-              currency: cheapest.price.currency ?? "USD",
-            }).format(cheapest.price.price)
-            : "—"}
-        </p>
+        {cheapest?.price?.price != null ? (
+          <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-1">
+            <p className="text-sm font-bold text-ink">
+              {formatCurrency(cheapest.price.price, cheapest.price.currency ?? "USD")}
+            </p>
+            {cheapest.price.compare_at_price && savings !== null ? (
+              <p className="text-xs text-ink-soft line-through">
+                {formatCurrency(cheapest.price.compare_at_price, cheapest.price.currency ?? "USD")}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-auto pt-1 text-sm font-semibold">—</p>
+        )}
       </div>
     </Link>
   );

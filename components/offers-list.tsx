@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { formatCurrency, formatDomain, formatPrice, isInStock, isOnSale } from "@/lib/format";
+import { discountPercent, formatCurrency, formatDomain, formatPrice, isInStock, isOnSale } from "@/lib/format";
 
 export interface OffersListProps extends React.ComponentProps<"div"> {
   offers: ReadonlyArray<ProductOffer>;
@@ -102,13 +102,18 @@ function OfferRow({
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex items-baseline gap-2">
+        <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1">
           {isOnSale(offer.price) && offer.price.compare_at_price ? (
             <span className="text-xs text-muted-foreground line-through">
               {formatCurrency(offer.price.compare_at_price, offer.price.currency, locale)}
             </span>
           ) : null}
           <span className="text-sm font-semibold">{formatPrice(offer.price, locale)}</span>
+          {discountPercent(offer.price) ? (
+            <span className="rounded-full bg-stock-bg px-2 py-0.5 text-[10px] font-bold text-stock">
+              Save {discountPercent(offer.price)}%
+            </span>
+          ) : null}
         </div>
         <a
           href={offer.url}
