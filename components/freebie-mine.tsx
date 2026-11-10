@@ -72,7 +72,7 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
     if (!campaign) return;
     setShareError(null);
     try {
-      await navigator.clipboard.writeText(`${getCampaignShareMessage(campaign)}\n${link}`);
+      await navigator.clipboard.writeText(link);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

@@ -230,7 +230,7 @@ export function CartView() {
                   Continue to checkout
                 </Link>
                 <Link
-                  href="/checkout?mode=free"
+                  href="/freebie"
                   className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#f36d25] to-[#ee385e] text-sm font-bold text-white transition hover:brightness-110"
                 >
                   <Gift className="size-4" />

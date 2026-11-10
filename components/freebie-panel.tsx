@@ -64,7 +64,7 @@ export function FreebiePanel({
   async function copy() {
     if (!campaign) return;
     try {
-      await navigator.clipboard.writeText(`${getCampaignShareMessage(campaign)}\n${link}`);
+      await navigator.clipboard.writeText(link);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -152,8 +152,13 @@ export function useFreebieCampaigns(enabled: boolean) {
   const [loading, setLoading] = useState(enabled);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setLoading(false);
+      setCampaigns({});
+      return;
+    }
     let active = true;
+    setLoading(true);
     freebieApi
       .listCampaigns()
       .then(({ campaigns: list }) => {
