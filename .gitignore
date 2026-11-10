@@ -34,3 +34,5 @@ yarn-error.log*
 # build output
 *.log
 
+.vercel
+.env*

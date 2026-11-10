@@ -26,6 +26,8 @@ type CheckoutViewProps = {
   campaignId?: string;
 };
 
+type FreebieStatus = { available: boolean; message: string };
+
 export function CheckoutView({ mode, campaignId }: CheckoutViewProps) {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -33,6 +35,7 @@ export function CheckoutView({ mode, campaignId }: CheckoutViewProps) {
   const [cartReady, setCartReady] = useState(false);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [campaignLoading, setCampaignLoading] = useState(Boolean(campaignId));
+  const [freebieStatus, setFreebieStatus] = useState<FreebieStatus | null>(null);
   const [pendingProduct, setPendingProduct] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [error, setError] = useState("");
@@ -48,6 +51,25 @@ export function CheckoutView({ mode, campaignId }: CheckoutViewProps) {
       setCartReady(true);
     });
   }, [campaignId, loading, mode, router, user]);
+
+  useEffect(() => {
+    if (mode !== "free" || campaignId) return;
+    let active = true;
+    void fetch("/api/freebies/status")
+      .then((response) => readJsonResponse<FreebieStatus>(response))
+      .then((status) => {
+        if (active) setFreebieStatus(status);
+      })
+      .catch(() => {
+        if (active) setFreebieStatus({
+          available: false,
+          message: "Freebie orders are not available yet. Please contact the store for help.",
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, [campaignId, mode]);
 
   useEffect(() => {
     if (!user || !campaignId) return;
@@ -184,7 +206,7 @@ export function CheckoutView({ mode, campaignId }: CheckoutViewProps) {
                   ) : !campaignId ? (
                     <button
                       type="button"
-                      disabled={pendingProduct === item.productId}
+                      disabled={pendingProduct === item.productId || freebieStatus?.available !== true}
                       onClick={() => void startCampaign(item)}
                       className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border border-brand px-3 text-xs font-semibold text-brand hover:bg-brand-tint disabled:opacity-60"
                     >
@@ -209,9 +231,16 @@ export function CheckoutView({ mode, campaignId }: CheckoutViewProps) {
               <LockKeyhole className="mt-3 size-4 text-ink-soft" aria-hidden />
             </aside>
           ) : !campaignId ? (
-            <p className="rounded-md bg-brand-tint p-3 text-sm leading-5 text-ink-soft">
-              Each product has its own 7-day campaign. Invite 15 newly registered, email-verified users to unlock one item.
-            </p>
+            <div className="flex flex-col gap-3">
+              <p className="rounded-md bg-brand-tint p-3 text-sm leading-5 text-ink-soft">
+                Each product has its own 7-day campaign. Invite 15 newly registered, email-verified users to unlock one item.
+              </p>
+              {freebieStatus && !freebieStatus.available ? (
+                <p role="status" className="rounded-md border border-save/60 bg-save/15 p-3 text-sm text-ink">
+                  {freebieStatus.message}
+                </p>
+              ) : null}
+            </div>
           ) : (
             <aside className="ml-auto w-full max-w-sm rounded-lg border border-border bg-white p-4 sm:p-5">
               {error ? <p role="alert" className="mb-3 text-sm text-destructive">{error}</p> : null}

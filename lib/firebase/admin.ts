@@ -11,37 +11,82 @@ export class ApiError extends Error {
   }
 }
 
+type ServiceAccount = { projectId: string; clientEmail: string; privateKey: string };
+
+/**
+ * Accepts either shape, because both are common in the wild:
+ *   1. the full service-account JSON downloaded from the Firebase console
+ *   2. just the PEM private key, with project id / client email supplied
+ *      separately (FIREBASE_ADMIN_PROJECT_ID / FIREBASE_ADMIN_CLIENT_EMAIL)
+ *
+ * A bare PEM key used to be parsed as JSON, fail, and surface as a generic
+ * 500 — so the error message now says exactly which piece is missing.
+ */
+function readServiceAccount(): ServiceAccount {
+  const raw = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT?.trim();
+  if (!raw) {
+    throw new ApiError("Firebase Admin credentials are missing (FIREBASE_ADMIN_SERVICE_ACCOUNT).", 503);
+  }
+
+  // Strip optional surrounding quotes pasted from a shell.
+  const value = raw.replace(/^['"]|['"]$/g, "");
+  const normalizeKey = (key: string) => key.replace(/\\n/g, "\n");
+
+  if (value.startsWith("{")) {
+    let account: { project_id?: string; client_email?: string; private_key?: string };
+    try {
+      account = JSON.parse(value);
+    } catch {
+      throw new ApiError("FIREBASE_ADMIN_SERVICE_ACCOUNT is not valid JSON.", 503);
+    }
+    if (!account.project_id || !account.client_email || !account.private_key) {
+      throw new ApiError(
+        "FIREBASE_ADMIN_SERVICE_ACCOUNT JSON is missing project_id, client_email or private_key.",
+        503,
+      );
+    }
+    return {
+      projectId: account.project_id,
+      clientEmail: account.client_email,
+      privateKey: normalizeKey(account.private_key),
+    };
+  }
+
+  // Bare PEM key path.
+  if (!value.includes("BEGIN PRIVATE KEY")) {
+    throw new ApiError(
+      "FIREBASE_ADMIN_SERVICE_ACCOUNT must be the service-account JSON or a PEM private key.",
+      503,
+    );
+  }
+
+  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+  if (!projectId || !clientEmail) {
+    throw new ApiError(
+      "A bare private key needs FIREBASE_ADMIN_PROJECT_ID and FIREBASE_ADMIN_CLIENT_EMAIL as well.",
+      503,
+    );
+  }
+
+  return { projectId, clientEmail, privateKey: normalizeKey(value) };
+}
+
 function getAdminApp() {
   const existing = getApps().find((app) => app.name === "mt-shop-admin");
   if (existing) return existing;
 
-  const rawAccount = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT;
-  if (!rawAccount) {
-    throw new ApiError("Free-order services are not configured yet.", 503);
-  }
-
-  try {
-    const account = JSON.parse(rawAccount) as {
-      project_id?: string;
-      client_email?: string;
-      private_key?: string;
-    };
-    if (!account.project_id || !account.client_email || !account.private_key) {
-      throw new Error("Service account is missing required fields");
-    }
-    return initializeApp(
-      {
-        credential: cert({
-          projectId: account.project_id,
-          clientEmail: account.client_email,
-          privateKey: account.private_key.replace(/\\n/g, "\n"),
-        }),
-      },
-      "mt-shop-admin",
-    );
-  } catch {
-    throw new ApiError("Firebase Admin configuration is invalid.", 503);
-  }
+  const account = readServiceAccount();
+  return initializeApp(
+    {
+      credential: cert({
+        projectId: account.projectId,
+        clientEmail: account.clientEmail,
+        privateKey: account.privateKey,
+      }),
+    },
+    "mt-shop-admin",
+  );
 }
 
 export function getAdminAuth() {
