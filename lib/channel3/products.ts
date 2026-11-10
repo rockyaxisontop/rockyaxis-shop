@@ -83,9 +83,15 @@ export const SUGGESTED_GROUPS = [
 export type SuggestedGroup = { key: string; title: string; query: string; products: Product[] };
 
 /** Runs the suggestion queries in parallel; failures are skipped, not thrown. */
-export async function getSuggestedProducts(limit = 8): Promise<SuggestedGroup[]> {
+export async function getSuggestedProducts(
+  limit = 8,
+  groupKeys?: readonly (typeof SUGGESTED_GROUPS)[number]["key"][],
+): Promise<SuggestedGroup[]> {
+  const groups = groupKeys
+    ? SUGGESTED_GROUPS.filter(({ key }) => groupKeys.includes(key))
+    : SUGGESTED_GROUPS;
   const results = await Promise.all(
-    SUGGESTED_GROUPS.map(async ({ key, title, query }) => {
+    groups.map(async ({ key, title, query }) => {
       try {
         const { products } = await searchProducts({ query, limit });
         return { key, title, query, products };

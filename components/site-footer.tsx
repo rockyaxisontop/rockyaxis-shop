@@ -1,5 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Facebook, Instagram, Mail, MapPin, Music2, Phone, Youtube } from "lucide-react";
+import mtStoreLogo from "../mt-store-white.png";
 
 
 
@@ -24,7 +26,8 @@ const navigation = [
   { label: "Homepage", href: "/" },
   { label: "Category", href: "/#shop-by-category" },
   { label: "Brands", href: "/search" },
-  { label: "About us", href: "/#about" },
+  { label: "About us", href: "/about" },
+  { label: "Frequently asked questions", href: "/faq" },
   { label: "My orders", href: "/cart" },
 ];
 
@@ -42,9 +45,13 @@ export function SiteFooter() {
         <div className="grid gap-9 py-10 sm:py-12 md:grid-cols-[1.4fr_1fr_1fr] md:gap-10">
           <section id="about" aria-labelledby="footer-about-title" className="max-w-lg">
             <Link href="/" aria-label="MT Store home" className="inline-flex">
-              <span className="text-xl font-extrabold tracking-tight text-ink">
-                MT<span className="text-brand">-Shop</span>
-              </span>
+              <Image
+                src={mtStoreLogo}
+                alt="MT Store"
+                width={255}
+                height={57}
+                className="h-10 w-auto object-contain"
+              />
             </Link>
             <h2 id="footer-about-title" className="mt-4 text-sm font-bold text-ink">
               About MT Store

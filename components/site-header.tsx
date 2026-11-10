@@ -8,8 +8,10 @@ import mtStoreLogo from "../mt-store-white.png";
 
 import {
   ChevronRight,
+  CircleHelp,
   Headphones,
   House,
+  Info,
   Laptop,
   LogOut,
   MapPin,
@@ -30,6 +32,10 @@ const categories = [
   { label: "Laptops", icon: Laptop, q: "laptops" },
   { label: "Headphones", icon: Headphones, q: "headphones" },
   { label: "Smartwatches", icon: Watch, q: "smartwatches" },
+];
+const helpfulLinks = [
+  { label: "About us", href: "/about", icon: Info },
+  { label: "FAQ", href: "/faq", icon: CircleHelp },
 ];
 
 export function SiteHeader() {
@@ -187,6 +193,16 @@ export function SiteHeader() {
               {label}
             </Link>
           ))}
+          <span className="mx-1 h-5 border-l border-border" aria-hidden />
+          {helpfulLinks.map(({ label, href }) => (
+            <Link
+              key={href}
+              href={href}
+              className="rounded-md px-3 py-1.5 text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              {label}
+            </Link>
+          ))}
         </div>
       </nav>
 
@@ -210,6 +226,21 @@ export function SiteHeader() {
               <Link
                 key={q}
                 href={`/search?q=${encodeURIComponent(q)}`}
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-3 py-2.5 text-sm text-ink"
+              >
+                <Icon className="size-4 text-brand" />
+                {label}
+                <ChevronRight className="ml-auto size-4 text-ink-soft" />
+              </Link>
+            ))}
+            <p className="pt-3 pb-1 text-[11px] font-bold tracking-wider text-ink-soft uppercase">
+              About the store
+            </p>
+            {helpfulLinks.map(({ label, href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
                 onClick={() => setMenuOpen(false)}
                 className="flex items-center gap-3 py-2.5 text-sm text-ink"
               >

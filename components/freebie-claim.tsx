@@ -11,6 +11,7 @@ import {
   Loader2,
   LogIn,
   PartyPopper,
+  ShoppingBag,
   Share2,
   Sparkles,
   Users,
@@ -235,7 +236,7 @@ export function FreebieClaim({ code }: { code: string }) {
           <div className="text-center">
             <p className="inline-flex items-center gap-2 rounded-lg bg-stock-bg px-3 py-2 text-sm font-semibold text-stock">
               <CheckCircle2 className="size-4" />
-              You&apos;ve already helped with this one
+              {message?.includes("counted") ? "Thanks — your referral is counted!" : "You've already helped with this one"}
             </p>
             <p className="mt-3 text-sm text-ink-soft">
               Want this product too? Start your own campaign — same rules, same chance.
@@ -250,12 +251,30 @@ export function FreebieClaim({ code }: { code: string }) {
               Get mine for free too
               <ArrowRight className="size-4" />
             </button>
+            <Link
+              href="/"
+              className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold text-ink transition hover:border-brand hover:bg-brand-tint hover:text-brand"
+            >
+              <ShoppingBag className="size-4" />
+              Continue shopping
+              <ArrowRight className="size-4" />
+            </Link>
           </div>
         ) : done ? (
-          <p className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-stock-bg px-3 py-3 text-sm font-semibold text-stock">
-            <PartyPopper className="size-4" />
-            This product is already unlocked!
-          </p>
+          <div className="text-center">
+            <p className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-stock-bg px-3 py-3 text-sm font-semibold text-stock">
+              <PartyPopper className="size-4" />
+              This product is already unlocked!
+            </p>
+            <Link
+              href="/"
+              className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white text-sm font-semibold text-ink transition hover:border-brand hover:bg-brand-tint hover:text-brand"
+            >
+              <ShoppingBag className="size-4" />
+              Explore the store
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
         ) : (
           <button
             type="button"
@@ -268,7 +287,7 @@ export function FreebieClaim({ code }: { code: string }) {
           </button>
         )}
 
-        {message ? (
+        {message && !campaign.alreadyReferred ? (
           <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm text-ink-soft">
             <Check className="size-3.5 text-stock" />
             {message}

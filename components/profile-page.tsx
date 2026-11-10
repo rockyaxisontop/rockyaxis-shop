@@ -5,10 +5,10 @@ import { verifyBeforeUpdateEmail } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Check, ChevronDown, House, Loader2, LocateFixed, MapPin, Pencil, UserRound } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, House, Loader2, LocateFixed, LogOut, MapPin, Pencil, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
-import { authErrorMessage } from "@/lib/firebase/auth";
+import { authErrorMessage, signOutUser } from "@/lib/firebase/auth";
 import { getDb } from "@/lib/firebase/client";
 
 type AddressLabel = "Home" | "Work" | "Other";
@@ -61,6 +61,7 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData>(EMPTY_PROFILE);
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
   const [emailDraft, setEmailDraft] = useState("");
@@ -146,6 +147,19 @@ export function ProfilePage() {
       setEmailNotice(authErrorMessage(cause));
     } finally {
       setEmailSending(false);
+    }
+  }
+
+  async function signOut() {
+    setSigningOut(true);
+    setError("");
+    try {
+      await signOutUser();
+      router.replace("/");
+      router.refresh();
+    } catch (cause) {
+      setError(authErrorMessage(cause));
+      setSigningOut(false);
     }
   }
 
@@ -421,6 +435,18 @@ export function ProfilePage() {
               <p className="text-xs text-ink-soft">Save your changes with the button below.</p>
             </div>
           ) : null}
+
+          <div className="mt-5 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              disabled={signingOut}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-ink-soft transition-colors hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive disabled:cursor-wait disabled:opacity-60"
+            >
+              <LogOut className="size-4" />
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
+          </div>
         </aside>
 
         <div className="flex flex-col items-start gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between lg:col-span-2">
