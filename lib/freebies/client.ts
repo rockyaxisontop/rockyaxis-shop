@@ -39,6 +39,13 @@ export const freebieApi = {
       { public: true },
     ),
 
+  /** Start my own campaign for the same product after helping. */
+  startFromCode: (code: string) =>
+    call<{ campaign: PublicCampaign }>(
+      `/api/freebies/campaigns/${encodeURIComponent(code)}/start`,
+      { method: "POST" },
+    ),
+
   claim: (code: string) =>
     call<{ campaign: PublicCampaign; counted: boolean; reason?: string }>("/api/freebies/claim", {
       method: "POST",

@@ -214,12 +214,9 @@ export async function claimReferral(
       );
     }
 
-    // 4. Account must be established (blocks throwaway sign-ups).
-    if (!user.createdAt || Date.now() - user.createdAt < 10 * 60 * 1000) {
-      throw new ApiError("Your account is too new to count as a referral. Try again later.", 403);
-    }
-
-    // 5. Verified email required.
+    // 4. Verified email required. (No account-age gate: brand-new accounts
+    //    count immediately — the one-referral-per-account rule below is what
+    //    prevents the same person from counting twice.)
     if (!user.email || !user.emailVerified) {
       throw new ApiError("Verify your email address before referring.", 403);
     }
@@ -251,6 +248,22 @@ export async function claimReferral(
       counted: true,
     };
   });
+}
+
+/**
+ * Growth loop: after helping someone, the helper can start their own campaign
+ * for the SAME product. Reuses startCampaign, so all the same rules apply
+ * (one campaign per user per product, stock check, expiry).
+ */
+export async function startCampaignFromCode(
+  user: AuthUser,
+  code: string,
+): Promise<PublicCampaign> {
+  const found = await db().collection(CAMPAIGNS).where("code", "==", code).limit(1).get();
+  if (found.empty) throw new ApiError("This referral link is not valid.", 404);
+
+  const productId = found.docs[0].data().productId as string;
+  return startCampaign(user, productId);
 }
 
 /** Places the free order. Only the owner, only when completed, only once. */
