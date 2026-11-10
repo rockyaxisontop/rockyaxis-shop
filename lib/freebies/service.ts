@@ -144,17 +144,26 @@ export async function listMyCampaigns(user: AuthUser): Promise<PublicCampaign[]>
   return snap.docs.map((doc) => toPublic(doc.id, doc.data(), user.uid, false));
 }
 
-export async function getCampaignByCode(code: string, viewerUid: string): Promise<PublicCampaign> {
+/**
+ * Public campaign view for a share link.
+ *
+ * Deliberately does NOT require a signed-in viewer: the whole point of a
+ * referral link is that a stranger opens it before they have an account.
+ * Only non-sensitive fields are exposed (no owner uid, no emails).
+ */
+export async function getCampaignByCode(
+  code: string,
+  viewerUid?: string,
+): Promise<PublicCampaign> {
   const snap = await db().collection(CAMPAIGNS).where("code", "==", code).limit(1).get();
   if (snap.empty) throw new ApiError("This referral link is not valid.", 404);
 
   const doc = snap.docs[0];
-  const referred = await db()
-    .collection(REFERRALS)
-    .doc(`${doc.id}__${viewerUid}`)
-    .get();
+  const referred = viewerUid
+    ? await db().collection(REFERRALS).doc(`${doc.id}__${viewerUid}`).get()
+    : null;
 
-  return toPublic(doc.id, doc.data(), viewerUid, referred.exists);
+  return toPublic(doc.id, doc.data(), viewerUid ?? "", referred?.exists ?? false);
 }
 
 /**

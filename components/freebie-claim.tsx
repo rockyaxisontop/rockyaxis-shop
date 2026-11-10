@@ -29,12 +29,10 @@ export function FreebieClaim({ code }: { code: string }) {
     }
   }, [code]);
 
+  // Always load the campaign — signed-out visitors must still see the product
+  // and progress before they sign in to count their referral.
   useEffect(() => {
     if (loading) return;
-    if (!user) {
-      setState("ready");
-      return;
-    }
     void load();
   }, [loading, user, load]);
 

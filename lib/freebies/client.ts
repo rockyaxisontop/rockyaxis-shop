@@ -3,16 +3,16 @@
 import { auth } from "@/lib/firebase/client";
 import type { FreebieOrder, PublicCampaign } from "./types";
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+async function call<T>(path: string, init?: RequestInit, { public: isPublic = false } = {}): Promise<T> {
   const user = auth.currentUser;
-  if (!user) throw new Error("Sign in to continue.");
+  if (!user && !isPublic) throw new Error("Sign in to continue.");
 
-  const token = await user.getIdToken();
+  const token = user ? await user.getIdToken() : null;
   const response = await fetch(path, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
@@ -31,8 +31,13 @@ export const freebieApi = {
       body: JSON.stringify({ productId }),
     }),
 
+  /** Public: works signed-out so a referral link can be previewed. */
   getCampaign: (code: string) =>
-    call<{ campaign: PublicCampaign }>(`/api/freebies/campaigns/${encodeURIComponent(code)}`),
+    call<{ campaign: PublicCampaign }>(
+      `/api/freebies/campaigns/${encodeURIComponent(code)}`,
+      undefined,
+      { public: true },
+    ),
 
   claim: (code: string) =>
     call<{ campaign: PublicCampaign; counted: boolean; reason?: string }>("/api/freebies/claim", {

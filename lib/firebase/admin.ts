@@ -161,6 +161,26 @@ export async function requireUser(request: Request): Promise<AuthUser> {
   }
 }
 
+/** Like requireUser, but returns null instead of throwing when signed out. */
+export async function optionalUser(request: Request): Promise<AuthUser | null> {
+  const header = request.headers.get("authorization");
+  const token = header?.match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!token) return null;
+
+  try {
+    const payload = await verifyFirebaseIdToken(token);
+    const iat = typeof payload.iat === "number" ? payload.iat * 1000 : Date.now();
+    return {
+      uid: payload.uid,
+      email: payload.email,
+      emailVerified: payload.email_verified === true,
+      createdAt: iat,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function apiErrorResponse(error: unknown) {
   if (error instanceof ApiError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
