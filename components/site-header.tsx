@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import mtStoreLogo from "../mt-store-white.png";
 
 import {
   ChevronRight,
@@ -152,9 +154,14 @@ export function SiteHeader() {
           aria-label="MT Store home"
           className="absolute left-1/2 flex h-9 w-[104px] -translate-x-1/2 shrink-0 items-center justify-center overflow-hidden md:static md:h-10 md:w-32 md:translate-x-0"
         >
-          <span className="text-lg font-extrabold tracking-tight text-ink">
-            MT<span className="text-brand">-Shop</span>
-          </span>
+          <Image
+            src={mtStoreLogo}
+            alt="MT Store"
+            width={255}
+            height={57}
+            priority
+            className="h-auto w-full object-contain"
+          />
         </Link>
 
         {showGlobalSearch ? <div className="hidden flex-1 md:block">{searchField}</div> : null}
