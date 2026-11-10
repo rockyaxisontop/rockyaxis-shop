@@ -7,6 +7,7 @@ import { ArrowLeft, ExternalLink, Gift, Loader2, LockKeyhole, ShoppingBag } from
 
 import { useAuth } from "@/components/providers";
 import { Skeleton } from "@/components/ui/skeleton";
+import { readJsonResponse } from "@/lib/client-api";
 import { subscribeCart, type CartItem } from "@/lib/firebase/cart";
 
 type Campaign = {
@@ -55,7 +56,7 @@ export function CheckoutView({ mode, campaignId }: CheckoutViewProps) {
     void user.getIdToken().then((token) => fetch(`/api/freebies/campaigns/${encodeURIComponent(campaignId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     })).then(async (response) => {
-      const body = await response.json() as { campaign?: Campaign; error?: string };
+      const body = await readJsonResponse<{ campaign?: Campaign; error?: string }>(response);
       if (!response.ok) throw new Error(body.error ?? "Could not load this campaign.");
       if (active) setCampaign(body.campaign ?? null);
     }).catch((cause: unknown) => {
@@ -85,7 +86,7 @@ export function CheckoutView({ mode, campaignId }: CheckoutViewProps) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ productId: item.productId }),
       });
-      const body = await response.json() as { campaign?: Campaign; error?: string };
+      const body = await readJsonResponse<{ campaign?: Campaign; error?: string }>(response);
       if (!response.ok || !body.campaign) throw new Error(body.error ?? "Could not start this campaign.");
       router.push(`/freebie/${encodeURIComponent(body.campaign.id)}`);
     } catch (cause) {
@@ -105,7 +106,7 @@ export function CheckoutView({ mode, campaignId }: CheckoutViewProps) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      const body = await response.json() as { orderId?: string; error?: string };
+      const body = await readJsonResponse<{ orderId?: string; error?: string }>(response);
       if (!response.ok || !body.orderId) throw new Error(body.error ?? "Could not place this order.");
       router.push(`/order-confirmation/${encodeURIComponent(body.orderId)}`);
     } catch (cause) {

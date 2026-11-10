@@ -74,5 +74,6 @@ export function apiErrorResponse(error: unknown) {
   if (error instanceof ApiError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
+  console.error("Unexpected trusted API error:", error);
   return NextResponse.json({ error: "The request could not be completed." }, { status: 500 });
 }

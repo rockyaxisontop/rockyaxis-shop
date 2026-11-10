@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Check, House, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
+import { readJsonResponse } from "@/lib/client-api";
 
 type FreeOrder = {
   id: string;
@@ -31,7 +32,7 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
     void user.getIdToken().then((token) => fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     })).then(async (response) => {
-      const body = await response.json() as { order?: FreeOrder; error?: string };
+      const body = await readJsonResponse<{ order?: FreeOrder; error?: string }>(response);
       if (!response.ok || !body.order) throw new Error(body.error ?? "Could not load this order.");
       if (active) setOrder(body.order);
     }).catch((cause: unknown) => {

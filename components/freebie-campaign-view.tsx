@@ -8,6 +8,7 @@ import { Check, Gift, Loader2, Share2, Users } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
 import { Button } from "@/components/ui/button";
+import { readJsonResponse } from "@/lib/client-api";
 
 type Campaign = {
   id: string;
@@ -33,7 +34,7 @@ export function FreebieCampaignView({ campaignId }: { campaignId: string }) {
     const headers: HeadersInit = {};
     if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`;
     const response = await fetch(`/api/freebies/campaigns/${encodeURIComponent(campaignId)}`, { headers });
-    const body = await response.json() as { campaign?: Campaign; error?: string };
+    const body = await readJsonResponse<{ campaign?: Campaign; error?: string }>(response);
     if (!response.ok || !body.campaign) throw new Error(body.error ?? "Could not load this campaign.");
     setCampaign(body.campaign);
   }, [campaignId, user]);
@@ -87,7 +88,7 @@ export function FreebieCampaignView({ campaignId }: { campaignId: string }) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      const body = await response.json() as { referralCount?: number; complete?: boolean; error?: string };
+      const body = await readJsonResponse<{ referralCount?: number; complete?: boolean; error?: string }>(response);
       if (!response.ok) throw new Error(body.error ?? "Your referral could not be verified.");
       setNotice(body.complete ? "Referral verified. The campaign is complete!" : "Referral verified successfully.");
       await loadCampaign();
