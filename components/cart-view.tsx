@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Gift, House, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
+import { Gift, House, MapPin, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 export function CartView() {
   const { user, loading } = useAuth();
-  const { currency: localCurrency } = useCurrency();
+  const { currency: localCurrency, countryName, locationLabel } = useCurrency();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
   const { campaigns } = useFreebieCampaigns(Boolean(user));
@@ -275,7 +275,10 @@ export function CartView() {
 
               <ul className="mt-4 space-y-1.5 border-t border-border pt-3 text-[11px] text-ink-soft">
                 <li className="flex items-center gap-1.5">
-                  <Truck className="size-3.5 text-brand" /> Free delivery on every order
+                  <Truck className="size-3.5 text-brand" /> Free delivery across {countryName}
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <MapPin className="size-3.5 text-brand" /> Ships from {locationLabel}
                 </li>
                 <li className="flex items-center gap-1.5">
                   <ShieldCheck className="size-3.5 text-brand" /> Genuine products, warranty included

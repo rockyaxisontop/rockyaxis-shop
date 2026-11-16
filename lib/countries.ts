@@ -37,25 +37,43 @@ const CAPITALS: Record<string, string> = {
 
 let displayNames: Intl.DisplayNames | null = null;
 
-/** English country name for an ISO code, e.g. "NP" → "Nepal". */
+/**
+ * English country name for an ISO code, e.g. "NP" → "Nepal".
+ *
+ * `Intl.DisplayNames.of()` throws a RangeError for unknown/placeholder codes
+ * (geo headers are not guaranteed to be real), so the lookup itself is guarded,
+ * not just the constructor.
+ */
 export function countryName(countryCode?: string | null): string {
   if (!countryCode) return "the United States";
   const code = countryCode.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return code;
   try {
     displayNames ??= new Intl.DisplayNames(["en"], { type: "region" });
-    return displayNames.of(code) ?? code;
+    const name = displayNames.of(code);
+    // Unassigned codes resolve to a placeholder like "Unknown Region"; treat
+    // that, and the code itself, as "no useful data" and fall back to the US.
+    if (!name || name === code || /^unknown/i.test(name)) return "the United States";
+    return name;
   } catch {
-    return code;
+    return "the United States";
   }
 }
 
 /** Capital city for an ISO code, e.g. "NP" → "Kathmandu". */
 export function countryCapital(countryCode?: string | null): string {
   if (!countryCode) return CAPITALS.US;
-  return CAPITALS[countryCode.toUpperCase()] ?? countryName(countryCode);
+  const code = countryCode.toUpperCase();
+  // Known capital, else the country's own name; never a "Unknown Region" label.
+  return CAPITALS[code] ?? countryName(code).replace(/^the /, "");
 }
 
 /** Full shipping-origin line, e.g. "Kathmandu, Nepal". */
 export function countryLocationLabel(countryCode?: string | null): string {
-  return `${countryCapital(countryCode)}, ${countryName(countryCode)}`;
+  const capital = countryCapital(countryCode);
+  const country = countryName(countryCode);
+  // Avoid "United States, the United States" when the capital is the country name.
+  return capital.replace(/^the /, "").toLowerCase() === country.replace(/^the /, "").toLowerCase()
+    ? country
+    : `${capital}, ${country}`;
 }

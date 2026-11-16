@@ -7,7 +7,15 @@ import { SITE_CONTACT, SITE_DESCRIPTION, SITE_NAME, SITE_SOCIAL, SITE_URL, absol
  * it for the knowledge panel, the site name in results and the sitelinks search
  * box. Values are constants from `lib/site.ts` — never user input.
  */
-export function SiteStructuredData() {
+export function SiteStructuredData({
+  countryName,
+  capital,
+  countryCode,
+}: {
+  countryName: string;
+  capital: string;
+  countryCode: string;
+}) {
   const graph = {
     "@context": "https://schema.org",
     "@graph": [
@@ -23,17 +31,18 @@ export function SiteStructuredData() {
         sameAs: [...SITE_SOCIAL],
         address: {
           "@type": "PostalAddress",
-          addressLocality: SITE_CONTACT.city,
-          addressRegion: SITE_CONTACT.region,
-          addressCountry: "NP",
+          addressLocality: capital,
+          addressRegion: capital,
+          addressCountry: countryCode,
         },
+        areaServed: { "@type": "Country", name: countryName },
         contactPoint: {
           "@type": "ContactPoint",
           telephone: SITE_CONTACT.phone,
           contactType: "customer support",
           email: SITE_CONTACT.email,
-          areaServed: "NP",
-          availableLanguage: ["en", "ne"],
+          areaServed: countryName,
+          availableLanguage: ["en"],
         },
       },
       {

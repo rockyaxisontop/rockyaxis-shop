@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { freebieApi } from "@/lib/freebies/client";
 import type { FreebieOrder } from "@/lib/freebies/types";
 
 export function FreebieOrderConfirmation({ orderId }: { orderId: string }) {
   const { user, loading } = useAuth();
+  const { countryName, locationLabel } = useCurrency();
   const [order, setOrder] = useState<FreebieOrder | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -79,6 +81,13 @@ export function FreebieOrderConfirmation({ orderId }: { orderId: string }) {
           <div className="flex justify-between">
             <dt>Order ID</dt>
             <dd className="font-mono text-ink">{order.id.slice(0, 12)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt>Delivering to</dt>
+            <dd className="text-right font-medium text-ink">
+              {countryName}
+              <span className="block text-[11px]">Ships from {locationLabel}</span>
+            </dd>
           </div>
           <div className="flex justify-between">
             <dt>Total paid</dt>

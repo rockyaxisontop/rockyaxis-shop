@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AboutContent } from "@/components/about-content";
+import { ProductSuggestions } from "@/components/product-suggestions";
 
 export const metadata: Metadata = {
   title: "About MT Store",
@@ -9,5 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
-  return <AboutContent />;
+  // The product feed is a server component; it is passed through as a slot so
+  // the country-aware content around it can stay client-side.
+  return <AboutContent suggestions={<ProductSuggestions />} />;
 }

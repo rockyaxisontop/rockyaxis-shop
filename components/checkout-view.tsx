@@ -28,7 +28,7 @@ const WHATSAPP_NUMBER = "9779714501791";
 /** Orders are sent to MT Store on WhatsApp so the team can confirm details. */
 export function CheckoutView() {
   const { user, loading } = useAuth();
-  const { currency } = useCurrency();
+  const { currency, countryName, locationLabel } = useCurrency();
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
@@ -88,6 +88,7 @@ export function CheckoutView() {
       `Subtotal: ${formatMoney(storeLineTotal(item.price, item.quantity, currency), currency)}`,
       `Product link: ${productPageUrl(item)}`,
       "",
+      `Deliver to: ${countryName}`,
       "Please confirm availability, delivery, and the final total. Thank you!",
     ];
     return lines.filter((line): line is string => line !== null).join("\n");
@@ -112,6 +113,7 @@ export function CheckoutView() {
       `Cart total in ${currency} (${STORE_DISCOUNT_PERCENT}% store discount applied):`,
       `- ${formatMoney(totals.pay, currency)}`,
       "",
+      `Deliver to: ${countryName}`,
       "Please confirm availability, delivery, and the final total for my order. Thank you!",
     ];
     return lines.join("\n");
@@ -288,7 +290,10 @@ export function CheckoutView() {
                 </div>
                 <div className="flex justify-between gap-3 text-sm">
                   <dt className="text-ink-soft">Delivery</dt>
-                  <dd className="font-medium text-ink-soft">Confirm via WhatsApp</dd>
+                  <dd className="text-right font-medium text-ink-soft">
+                    Free across {countryName}
+                    <span className="block text-[11px]">Ships from {locationLabel}</span>
+                  </dd>
                 </div>
               </dl>
 

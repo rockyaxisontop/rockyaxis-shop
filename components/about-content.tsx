@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, MapPin, Search, ShoppingBag, Sparkles, Truck } from "lucide-react";
 
+import type { ReactNode } from "react";
+
 import { useCurrency } from "@/components/currency-provider";
-import { ProductSuggestions } from "@/components/product-suggestions";
 
 const steps = [
   {
@@ -28,7 +29,7 @@ const steps = [
  * The about page body. Lives in a client component because the shop location and
  * delivery lines follow the visitor's country, which arrives via context.
  */
-export function AboutContent() {
+export function AboutContent({ suggestions }: { suggestions?: ReactNode }) {
   const { locationLabel, countryName, currency } = useCurrency();
 
   return (
@@ -91,19 +92,19 @@ export function AboutContent() {
             <p className="mt-1 text-base font-bold text-ink">{locationLabel}</p>
             <p className="mt-1 text-sm text-ink-soft">Where MT Store ships from.</p>
           </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-brand">
+            <Truck className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-bold tracking-wider text-brand uppercase">Delivery</p>
+            <p className="mt-1 text-base font-bold text-ink">Available everywhere in {countryName}</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              Free delivery on every order, with prices shown in {currency}.
+            </p>
           </div>
-          <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-brand">
-              <Truck className="size-5" />
-            </span>
-            <div>
-              <p className="text-xs font-bold tracking-wider text-brand uppercase">Delivery</p>
-              <p className="mt-1 text-base font-bold text-ink">Available everywhere in {countryName}</p>
-              <p className="mt-1 text-sm text-ink-soft">
-                Free delivery on every order, with prices shown in {currency}.
-              </p>
-            </div>
-          </div>
+        </div>
       </section>
 
       <section className="grid gap-5 rounded-2xl border border-border bg-white p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
@@ -125,7 +126,8 @@ export function AboutContent() {
         </Link>
       </section>
 
-      <ProductSuggestions />
+      {/* Server-rendered feed, passed in so it stays out of the client bundle. */}
+      {suggestions}
     </div>
   );
 }

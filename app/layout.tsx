@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import { CurrencyProvider } from "@/components/currency-provider";
@@ -61,22 +61,28 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false, address: false, email: false },
   category: "shopping",
   manifest: "/manifest.webmanifest",
+};
+
+/**
+ * Viewport / browser-UI settings. Next 15 requires these in their own export
+ * rather than in `metadata`.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
   themeColor: "#1d7fa4",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Prices, shop location and delivery copy all follow the visitor's country.
-  const { currency, country } = await getCurrencyContext();
+  const { currency, country, countryName: visitorCountry, capital } = await getCurrencyContext();
 
   return (
     <html lang="en" className={inter.variable}>
-      <head>
-        {/* Sets the mobile browser UI colour to the brand teal. */}
-        <meta name="theme-color" content="#1d7fa4" />
-      </head>
+
       {/* flex-col lets `main` grow so the footer sits at the bottom on short pages */}
       <body className="flex min-h-dvh flex-col bg-surface font-sans antialiased">
-        <SiteStructuredData />
+        <SiteStructuredData countryName={visitorCountry} capital={capital} countryCode={country} />
         {/* Keyboard/screen-reader users can jump straight past the navigation. */}
         <a
           href="#main-content"
