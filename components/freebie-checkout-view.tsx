@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { useFreebieCampaigns } from "@/components/freebie-panel";
 import { FreebieOrderButton } from "@/components/freebie-order-button";
@@ -142,11 +143,11 @@ function FreebieHero({ unlocked, count }: { unlocked: number; count: number }) {
           {hasItems ? (
             <p className="mt-1 text-xs leading-5 text-white/80 sm:text-sm">
               Invite <span className="font-extrabold text-white">15 verified friends</span> in 7 days and
-              pay <span className="font-extrabold text-white">0</span> — no purchase needed.
+              get it <span className="font-extrabold text-white">FREE</span> — no purchase needed.
             </p>
           ) : (
             <p className="mt-1 text-xs leading-5 text-white/80 sm:text-sm">
-              Pick any product, invite 15 verified friends in 7 days, and pay 0 at checkout.
+              Pick any product, invite 15 verified friends in 7 days, and get it free at checkout.
             </p>
           )}
         </div>
@@ -155,7 +156,7 @@ function FreebieHero({ unlocked, count }: { unlocked: number; count: number }) {
       <div className="relative z-10 mt-3 grid grid-cols-3 gap-2">
         <HeroStep icon={Gift} label="Add to cart" done />
         <HeroStep icon={Users} label="Invite 15" done={unlocked > 0} />
-        <HeroStep icon={Sparkles} label="Pay 0" done={false} />
+        <HeroStep icon={Sparkles} label="Get it FREE" done={false} />
       </div>
     </section>
   );
@@ -198,7 +199,7 @@ function SignedOutHero() {
           <Flame className="size-3" /> 100% free · 15 friends
         </span>
         <h1 className="mt-3 text-2xl leading-tight font-extrabold tracking-tight text-balance">
-          Your cart, for <span className="text-[#ffdd48]">₨0</span>
+          Your cart, for <span className="text-[#ffdd48]">FREE</span>
         </h1>
         <p className="mt-2 text-sm leading-6 text-white/85">
           Invite 15 verified friends within 7 days and your product ships free. No purchase needed to help.
@@ -267,7 +268,7 @@ function HowItWorks() {
         </li>
         <li className="flex gap-2">
           <span className="grid size-4 shrink-0 place-items-center rounded-full bg-brand text-[9px] font-extrabold text-white">3</span>
-          At 15 verified referrals, your order unlocks at 0.
+          At 15 verified referrals, your order unlocks free.
         </li>
       </ol>
     </section>
@@ -285,6 +286,7 @@ function FreebieItem({
   busy: boolean;
   onStart: () => void;
 }) {
+  const { currency } = useCurrency();
   const active = campaign?.status === "active";
   const done = campaign?.status === "completed";
   const percent = campaign ? campaignPercent(campaign.referralCount, campaign.target) : 0;
@@ -321,7 +323,8 @@ function FreebieItem({
             </p>
           ) : null}
           <div className="mt-1">
-            <FreebiePrice />
+            {/* Cart rows hold the source list price, so let the component apply the 80%. */}
+            <FreebiePrice price={item.price} currency={currency} cartPrice />
           </div>
         </div>
       </div>

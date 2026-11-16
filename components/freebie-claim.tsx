@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { addToCart } from "@/lib/firebase/cart";
 import { freebieApi } from "@/lib/freebies/client";
@@ -28,6 +29,7 @@ import {
   FreebieCountdown,
   FreebieSegments,
   FreebieStatusPill,
+  formatCampaignMoney,
   spotsLeft,
 } from "@/components/freebie-ui";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,7 @@ import { cn } from "@/lib/utils";
 /** Landing page for an invited user: shows progress and counts their referral. */
 export function FreebieClaim({ code }: { code: string }) {
   const { user, loading } = useAuth();
+  const { currency } = useCurrency();
   const pathname = usePathname();
   const router = useRouter();
   const [campaign, setCampaign] = useState<PublicCampaign | null>(null);
@@ -187,11 +190,10 @@ export function FreebieClaim({ code }: { code: string }) {
                   {campaign.product.brand}
                 </p>
               ) : null}
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                {/* Our discounted price, struck through, then the word FREE. */}
+                <s className="text-[11px] text-white/60">{formatCampaignMoney(campaign.product.price, currency)}</s>
                 <span className="text-[13px] font-black tracking-tight text-[#ffdd48]">FREE</span>
-                <span className="rounded bg-[#ffdd48] px-1.5 py-0.5 text-[10px] font-extrabold text-[#7a4a00]">
-                  0
-                </span>
                 <FreebieStatusPill
                   status={done ? "completed" : campaign.status}
                   className="shrink-0 bg-white/20 text-white"

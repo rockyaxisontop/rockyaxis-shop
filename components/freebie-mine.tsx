@@ -251,7 +251,8 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
           ) : null}
           <p className="line-clamp-1 text-sm font-bold text-ink">{campaign.product.title}</p>
           <div className="mt-0.5">
-            <FreebiePrice />
+            {/* Campaign records already store our discounted price. */}
+            <FreebiePrice price={campaign.product.price} currency={currency} size="sm" />
           </div>
         </div>
         <Link

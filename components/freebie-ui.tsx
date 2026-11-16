@@ -1,6 +1,7 @@
 import { Flame, Gift, Timer } from "lucide-react";
 
 import { convertFromUsd, formatLocal } from "@/lib/currency";
+import { storePrice } from "@/lib/discount";
 import { cn } from "@/lib/utils";
 
 /** Milliseconds left before a campaign closes (0 when it already has). */
@@ -39,20 +40,44 @@ export function formatSavings(amount: number, currency: string) {
 }
 
 /**
- * The price shown on every campaign screen: FREE, costing 0.
+ * The price shown on every campaign screen: our discounted price, struck
+ * through, then the word FREE.
  *
- * Campaigns deliberately never show a running price, a strike-through list price
- * or a discount badge — the only figure that matters is what you pay.
+ * e.g.  ~~$70~~ FREE
+ *
+ * `price` is always USD: campaign records store it converted, while cart rows
+ * hold the source list price, so `cartPrice` marks the latter and applies our
+ * 80% discount. The displayed figure is converted to the visitor's currency.
  */
 export function FreebiePrice({
+  price,
+  currency,
+  cartPrice = false,
   size = "md",
   className,
 }: {
+  /** Price in USD. */
+  price: number;
+  /** Visitor's currency to display in. */
+  currency: string;
+  /** True when `price` is a raw cart list price that still needs the 80% off. */
+  cartPrice?: boolean;
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
+  const amountUsd = cartPrice ? storePrice(price) : price;
+
   return (
     <span className={cn("inline-flex items-baseline gap-1.5", className)}>
+      <span
+        className={cn(
+          "text-ink-soft",
+          size === "lg" ? "text-base" : size === "sm" ? "text-[10px]" : "text-[11px]",
+        )}
+      >
+        {/* Struck through: what the item would otherwise cost. */}
+        <s>{formatCampaignMoney(amountUsd, currency)}</s>
+      </span>
       <span
         className={cn(
           "leading-none font-black tracking-tight text-stock",
@@ -60,14 +85,6 @@ export function FreebiePrice({
         )}
       >
         FREE
-      </span>
-      <span
-        className={cn(
-          "rounded-md bg-stock-bg px-1.5 py-0.5 font-extrabold text-stock",
-          size === "lg" ? "text-base" : size === "sm" ? "text-[10px]" : "text-[11px]",
-        )}
-      >
-        0
       </span>
     </span>
   );
