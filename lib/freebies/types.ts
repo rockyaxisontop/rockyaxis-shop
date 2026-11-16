@@ -10,7 +10,12 @@ export type CampaignProduct = {
   title: string;
   image?: string;
   brand?: string;
+  /** Our discounted selling price (what the freebie saves the owner). */
   price: number;
+  /** Original source listing price, shown struck through. */
+  listPrice?: number;
+  /** Store-wide discount percentage applied to `listPrice`. */
+  discountPercent?: number;
   currency: string;
   url?: string;
   options?: Record<string, string>;

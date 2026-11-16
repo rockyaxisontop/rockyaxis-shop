@@ -1,20 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles, Tag, Truck } from "lucide-react";
-import type { Product } from "@channel3/sdk/resources";
-import { discountPercent, isInStock } from "@/lib/format";
-import type { SuggestedGroup } from "@/lib/channel3/products";
 
-/** Big Billion Days campaign; any percentage shown is backed by live offer data. */
-export function PromoBanners({ groups }: { groups: SuggestedGroup[] }) {
-  const maximumVerifiedDiscount = groups
-    .flatMap((group) => group.products)
-    .flatMap((product: Product) => product.offers ?? [])
-    .filter((offer) => isInStock(offer.availability))
-    .map((offer) => discountPercent(offer.price))
-    .filter((percent): percent is number => percent !== null && percent > 0 && percent <= 80)
-    .reduce((maximum, percent) => Math.max(maximum, percent), 0);
-  const hasEightyPercentOffer = maximumVerifiedDiscount === 80;
+import { STORE_DISCOUNT_PERCENT } from "@/lib/discount";
 
+/** Big Billion Days campaign; every product is sold by us below list price. */
+export function PromoBanners() {
   return (
     <section className="grid gap-3 md:grid-cols-[1.35fr_0.85fr] md:gap-4">
       <Link
@@ -27,12 +17,11 @@ export function PromoBanners({ groups }: { groups: SuggestedGroup[] }) {
             Big Billion Days
           </span>
           <h2 className="text-3xl leading-none font-black sm:text-5xl">
-            {hasEightyPercentOffer ? "UP TO 80% OFF" : "Find a better deal"}
+            {STORE_DISCOUNT_PERCENT}% OFF EVERYTHING
           </h2>
           <p className="mt-2 max-w-xs text-sm text-white/90 sm:text-base">
-            {hasEightyPercentOffer
-              ? "On selected offers with verified retailer markdowns."
-              : "Explore live prices and retailer-verified discounts."}
+            Every product, every category — {STORE_DISCOUNT_PERCENT}% off the listed price, applied
+            automatically.
           </p>
           <span className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-xs font-bold text-[#a6241e] transition group-hover:bg-[#fff3db]">
             Explore products
@@ -40,9 +29,9 @@ export function PromoBanners({ groups }: { groups: SuggestedGroup[] }) {
           </span>
         </div>
         <span className="pointer-events-none absolute right-5 grid size-24 shrink-0 rotate-6 place-items-center rounded-full border-2 border-dashed border-[#ffd766] text-center text-xs leading-tight font-extrabold text-[#ffd766] sm:right-10 sm:size-36 sm:text-base">
-          VERIFIED
+          ALL
           <br />
-          OFFERS
+          PRODUCTS
         </span>
         <span className="pointer-events-none absolute -right-16 -bottom-28 h-64 w-64 rounded-full border-[36px] border-white/10" />
       </Link>

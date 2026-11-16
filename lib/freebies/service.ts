@@ -3,6 +3,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getProduct } from "@/lib/channel3/products";
+import { STORE_DISCOUNT_PERCENT, storePrice } from "@/lib/discount";
 import { ApiError, getAdminDb, type AuthUser } from "@/lib/firebase/admin";
 import {
   CAMPAIGN_DAYS,
@@ -74,14 +75,20 @@ async function loadPurchasableProduct(productId: string): Promise<CampaignProduc
   }
 
   const offer = product.offers?.find((o) => o.availability === "InStock") ?? product.offers?.[0];
+  const listPrice = offer?.price?.price ?? 0;
+  const currency = offer?.price?.currency ?? "USD";
 
   return {
     productId: product.id,
     title: product.title,
     image: product.images?.[0]?.url,
     brand: product.brands?.[0]?.name,
-    price: offer?.price?.price ?? 0,
-    currency: offer?.price?.currency ?? "USD",
+    // Our selling price — what the shopper would otherwise pay at MT Store.
+    price: storePrice(listPrice, currency),
+    // The source listing, shown struck through next to our price.
+    listPrice,
+    discountPercent: listPrice > 0 ? STORE_DISCOUNT_PERCENT : 0,
+    currency,
     url: offer?.url,
   };
 }

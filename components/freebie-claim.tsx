@@ -26,11 +26,11 @@ import type { PublicCampaign } from "@/lib/freebies/types";
 import {
   campaignPercent,
   FreebieCountdown,
+  FreebiePrice,
   FreebieSegments,
   FreebieSocialProof,
   FreebieStatusPill,
   formatMoney,
-  formatSavings,
   spotsLeft,
 } from "@/components/freebie-ui";
 import { cn } from "@/lib/utils";
@@ -136,7 +136,8 @@ export function FreebieClaim({ code }: { code: string }) {
   const expired = campaign.status === "expired" || campaign.status === "cancelled";
   const remaining = spotsLeft(campaign.referralCount, campaign.target);
   const price = formatMoney(campaign.product.price, campaign.product.currency);
-  const saved = formatSavings(campaign.product.price, campaign.product.currency);
+  // What the shopper pays at MT Store today — that is what going free is worth.
+  const saved = price;
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-3 py-3 sm:gap-4 sm:py-6">
@@ -215,13 +216,22 @@ export function FreebieClaim({ code }: { code: string }) {
                 {campaign.product.brand}
               </p>
             ) : null}
-            <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
-              <span className="text-xs text-ink-soft line-through">{price}</span>
+            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <FreebiePrice
+                price={campaign.product.price}
+                listPrice={campaign.product.listPrice}
+                currency={campaign.product.currency}
+              />
               <span className="text-lg font-extrabold text-stock">₨0</span>
               <span className="rounded-full bg-stock-bg px-2 py-0.5 text-[10px] font-extrabold text-stock">
                 You save {saved}
               </span>
-            </p>
+              {campaign.product.discountPercent ? (
+                <span className="rounded-full bg-save px-1.5 py-0.5 text-[10px] font-extrabold text-ink">
+                  −{campaign.product.discountPercent}% store price
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
 

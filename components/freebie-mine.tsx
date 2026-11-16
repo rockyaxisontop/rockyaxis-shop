@@ -25,6 +25,7 @@ import type { PublicCampaign } from "@/lib/freebies/types";
 import {
   campaignPercent,
   FreebieCountdown,
+  FreebiePrice,
   FreebieSegments,
   FreebieSocialProof,
   FreebieStatusPill,
@@ -249,10 +250,14 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
             </p>
           ) : null}
           <p className="line-clamp-1 text-sm font-bold text-ink">{campaign.product.title}</p>
-          <p className="mt-0.5 flex items-baseline gap-1.5">
-            <span className="text-[11px] text-ink-soft line-through">{price}</span>
+          <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
+            <FreebiePrice
+              price={campaign.product.price}
+              listPrice={campaign.product.listPrice}
+              currency={campaign.product.currency}
+            />
             <span className="text-sm font-extrabold text-stock">₨0</span>
-          </p>
+          </div>
         </div>
         <Link
           href={`/products/${campaign.product.productId}`}

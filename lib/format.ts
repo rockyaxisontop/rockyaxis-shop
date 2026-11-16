@@ -5,6 +5,8 @@ import type {
   ProductOffer,
 } from "@channel3/sdk/resources";
 
+import { STORE_DISCOUNT_PERCENT, storePrice } from "./discount";
+
 /**
  * Format a numeric amount as a localized currency string. Falls back to a
  * plain `CODE 12.34` string when the runtime doesn't recognize the currency.
@@ -18,6 +20,14 @@ export function formatCurrency(amount: number, currency: string, locale?: string
 }
 
 export function formatPrice(price: Price, locale?: string): string {
+  return formatCurrency(storePrice(price.price, price.currency), price.currency, locale);
+}
+
+/**
+ * The struck-through "was" price: the source listing, which is what our
+ * discount is measured against.
+ */
+export function formatListPrice(price: Price, locale?: string): string {
   return formatCurrency(price.price, price.currency, locale);
 }
 
@@ -25,11 +35,13 @@ export function isOnSale(price: Price): boolean {
   return typeof price.compare_at_price === "number" && price.compare_at_price > price.price;
 }
 
-export function discountPercent(price: Price): number | null {
-  if (!isOnSale(price) || !price.compare_at_price) {
-    return null;
-  }
-  return Math.round(((price.compare_at_price - price.price) / price.compare_at_price) * 100);
+/**
+ * Every product carries the same store-wide discount, so this is a constant.
+ * It still takes the price so call sites read naturally and can be narrowed
+ * later if particular products are ever excluded.
+ */
+export function discountPercent(price: Price): number {
+  return price.price > 0 ? STORE_DISCOUNT_PERCENT : 0;
 }
 
 export function formatDomain(domain: string): string {

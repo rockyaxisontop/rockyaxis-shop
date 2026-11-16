@@ -23,6 +23,7 @@ import { FreebieOrderButton } from "@/components/freebie-order-button";
 import {
   campaignPercent,
   FreebieCountdown,
+  FreebiePrice,
   FreebieSegments,
   FreebieStatusPill,
   formatMoney,
@@ -333,10 +334,10 @@ function FreebieItem({
               {item.brand}
             </p>
           ) : null}
-          <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
-            <span className="text-xs text-ink-soft line-through">{formatMoney(item.price, item.currency)}</span>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
+            <FreebiePrice price={item.price} currency={item.currency} />
             <span className="text-sm font-extrabold text-stock">₨0</span>
-          </p>
+          </div>
         </div>
       </div>
 

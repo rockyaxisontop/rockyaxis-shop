@@ -28,6 +28,31 @@ export function formatSavings(amount: number, currency: string) {
   return formatMoney(amount, currency);
 }
 
+/**
+ * Was → now price row. `price` is our discounted price, `listPrice` the
+ * original source listing; the shrink is what makes the freebie feel valuable.
+ */
+export function FreebiePrice({
+  price,
+  listPrice,
+  currency,
+  className,
+}: {
+  price: number;
+  listPrice?: number;
+  currency: string;
+  className?: string;
+}) {
+  return (
+    <span className={cn("flex flex-wrap items-baseline gap-x-1.5", className)}>
+      {listPrice != null && listPrice > price ? (
+        <span className="text-[11px] text-ink-soft line-through">{formatMoney(listPrice, currency)}</span>
+      ) : null}
+      <span className="text-sm font-extrabold text-ink">{formatMoney(price, currency)}</span>
+    </span>
+  );
+}
+
 export function campaignPercent(referralCount: number, target: number) {
   return Math.min(100, Math.round((referralCount / Math.max(1, target)) * 100));
 }

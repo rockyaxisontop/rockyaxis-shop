@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  formatCurrency,
+  discountPercent,
+  formatListPrice,
   formatPrice,
-  isOnSale,
   isSoldOut,
   leadOffer,
   pickHoverImage,
@@ -121,11 +121,8 @@ export function ProductCard({
 
   const displayedSrc = activePreview ?? activeHover ?? imageSrc;
 
-  const onSale = offer ? isOnSale(offer.price) && Boolean(offer.price.compare_at_price) : false;
-  const discountPercent =
-    onSale && offer?.price.compare_at_price
-      ? Math.round(100 - (offer.price.price / offer.price.compare_at_price) * 100)
-      : 0;
+  // Our own store-wide discount, not the retailer's occasional markdown.
+  const storeDiscount = offer ? discountPercent(offer.price) : 0;
   const inStock = offer?.availability === "InStock";
 
   const media = (
@@ -175,9 +172,9 @@ export function ProductCard({
           <ImageOff className="size-8" aria-hidden />
         </div>
       )}
-      {discountPercent > 0 && !soldOut ? (
+      {storeDiscount > 0 && !soldOut ? (
         <span className="absolute top-2 left-2 rounded bg-save px-1.5 py-0.5 text-[10px] font-extrabold text-ink sm:text-[11px]">
-          -{discountPercent}%
+          -{storeDiscount}%
         </span>
       ) : null}
       {soldOut ? (
@@ -243,11 +240,9 @@ export function ProductCard({
             <span className="text-[13px] font-bold text-ink sm:text-[15px]">
               {formatPrice(offer.price, locale)}
             </span>
-            {onSale && offer.price.compare_at_price ? (
-              <span className="text-[11px] text-ink-soft line-through sm:text-xs">
-                {formatCurrency(offer.price.compare_at_price, offer.price.currency, locale)}
-              </span>
-            ) : null}
+            <span className="text-[11px] text-ink-soft line-through sm:text-xs">
+              {formatListPrice(offer.price, locale)}
+            </span>
           </>
         ) : null}
       </div>

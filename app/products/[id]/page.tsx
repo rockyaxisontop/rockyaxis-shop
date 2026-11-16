@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
 import { ProductRecommendationsView, ProductView } from "@/components/product-view";
 import { getProduct } from "@/lib/channel3/products";
+import { storePrice } from "@/lib/discount";
 import { discountPercent } from "@/lib/format";
 
 type PageProps = {
@@ -87,19 +88,17 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
               <div className="rounded-xl bg-surface-2 p-4">
                 <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                   <p className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
-                    {formatPrice(lowestOffer.price.price, lowestOffer.price.currency ?? "USD")}
+                    {formatMoney(
+                      storePrice(lowestOffer.price.price, lowestOffer.price.currency ?? "USD"),
+                      lowestOffer.price.currency ?? "USD",
+                    )}
                   </p>
-                  {lowestOffer.price.compare_at_price != null &&
-                  lowestOffer.price.compare_at_price > lowestOffer.price.price ? (
-                    <>
-                      <p className="text-sm text-ink-soft line-through">
-                        {formatPrice(lowestOffer.price.compare_at_price, lowestOffer.price.currency ?? "USD")}
-                      </p>
-                      <span className="rounded-full bg-stock-bg px-2 py-1 text-[11px] font-bold text-stock">
-                        Save {discountPercent(lowestOffer.price)}%
-                      </span>
-                    </>
-                  ) : null}
+                  <p className="text-sm text-ink-soft line-through">
+                    {formatMoney(lowestOffer.price.price, lowestOffer.price.currency ?? "USD")}
+                  </p>
+                  <span className="rounded-full bg-stock-bg px-2 py-1 text-[11px] font-bold text-stock">
+                    Save {discountPercent(lowestOffer.price)}%
+                  </span>
                 </div>
                 {offers.length > 1 ? (
                   <p className="mt-1 text-xs text-ink-soft">
@@ -130,7 +129,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
   );
 }
 
-function formatPrice(amount: number, currency: string) {
+function formatMoney(amount: number, currency: string) {
   return new Intl.NumberFormat("en", {
     style: "currency",
     currency,

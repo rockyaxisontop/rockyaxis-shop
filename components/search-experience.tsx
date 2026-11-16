@@ -7,6 +7,7 @@ import type { Product } from "@channel3/sdk/resources";
 import { ProductSearch } from "@/components/product-search";
 import { Button } from "@/components/ui/button";
 import { fetchProductSearch, productSearchFetcher } from "@/lib/channel3/client-search";
+import { storePrice } from "@/lib/discount";
 
 /**
  * Official Channel3 `product-search` block – filters, image search and
@@ -102,8 +103,21 @@ export function FallbackSearch({ onSelect }: { onSelect: (product: Product) => v
               </div>
               <div className="p-3">
                 <p className="line-clamp-2 text-sm font-medium">{product.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {offer ? formatPrice(offer.price?.price, offer.price?.currency) : "—"}
+                <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-sm text-muted-foreground">
+                  {offer ? (
+                    <>
+                      <span className="font-bold text-ink">
+                        {formatPrice(storePrice(offer.price?.price ?? 0, offer.price?.currency), offer.price?.currency)}
+                      </span>
+                      {offer.price?.price != null ? (
+                        <span className="text-[11px] line-through">
+                          {formatPrice(offer.price.price, offer.price.currency)}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    "—"
+                  )}
                 </p>
               </div>
             </button>

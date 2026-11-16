@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Gift, House, Minus, Plus, ShieldCheck, ShoppingBag, Trash2, Truck } from "lucide-react";
+import { Gift, House, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
 import { useFreebieCampaigns } from "@/components/freebie-panel";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { storeLineTotal, storePrice, STORE_DISCOUNT_PERCENT } from "@/lib/discount";
 import { cartItemId, removeFromCart, setCartQuantity, subscribeCart, type CartItem } from "@/lib/firebase/cart";
 import { cn } from "@/lib/utils";
 
@@ -60,10 +61,19 @@ export function CartView() {
     );
   }
 
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const currency = items[0]?.currency ?? "USD";
+  // Customers pay our discounted price; the Channel3 price is only the "was".
+  const listTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = items.reduce(
+    (sum, item) => sum + storeLineTotal(item.price, item.quantity, item.currency),
+    0,
+  );
+  const storeSavingsValue = listTotal - total;
   const unlocked = items.filter((item) => campaigns[item.productId]?.status === "completed");
-  const unlockedValue = unlocked.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const unlockedValue = unlocked.reduce(
+    (sum, item) => sum + storeLineTotal(item.price, item.quantity, item.currency),
+    0,
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -140,18 +150,26 @@ export function CartView() {
                       </p>
                     ) : null}
 
-                    <div className="mt-auto flex items-baseline gap-2 pt-1.5">
+                    <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1.5">
                       {isFree ? (
                         <>
                           <span className="text-sm font-extrabold text-stock">FREE</span>
                           <span className="text-xs text-ink-soft line-through">
-                            {formatPrice(item.price, item.currency)}
+                            {formatPrice(storePrice(item.price, item.currency), item.currency)}
                           </span>
                         </>
                       ) : (
-                        <span className="text-sm font-bold text-ink">
-                          {formatPrice(item.price, item.currency)}
-                        </span>
+                        <>
+                          <span className="text-sm font-bold text-ink">
+                            {formatPrice(storePrice(item.price, item.currency), item.currency)}
+                          </span>
+                          <span className="text-[11px] text-ink-soft line-through">
+                            {formatPrice(item.price, item.currency)}
+                          </span>
+                          <span className="rounded bg-save px-1.5 py-0.5 text-[10px] font-extrabold text-ink">
+                            −{STORE_DISCOUNT_PERCENT}%
+                          </span>
+                        </>
                       )}
                     </div>
                   </div>
@@ -198,8 +216,14 @@ export function CartView() {
 
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-ink-soft">Subtotal</dt>
-                  <dd className="font-semibold text-ink">{formatPrice(total, currency)}</dd>
+                  <dt className="text-ink-soft">List price</dt>
+                  <dd className="font-semibold text-ink-soft line-through">{formatPrice(listTotal, currency)}</dd>
+                </div>
+                <div className="flex justify-between text-stock">
+                  <dt className="flex items-center gap-1">
+                    <Tag className="size-3.5" /> MT Store discount ({STORE_DISCOUNT_PERCENT}%)
+                  </dt>
+                  <dd className="font-semibold">−{formatPrice(storeSavingsValue, currency)}</dd>
                 </div>
                 {unlockedValue > 0 ? (
                   <div className="flex justify-between text-stock">

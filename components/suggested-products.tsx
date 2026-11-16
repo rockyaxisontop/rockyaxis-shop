@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Product } from "@channel3/sdk/resources";
 
 import type { SuggestedGroup } from "@/lib/channel3/products";
+import { storePrice } from "@/lib/discount";
 import { discountPercent, formatCurrency } from "@/lib/format";
 
 /**
@@ -38,7 +39,7 @@ function ProductTile({ product }: { product: Product }) {
         : best,
     undefined,
   );
-  const savings = cheapest ? discountPercent(cheapest.price) : null;
+  const savings = cheapest ? discountPercent(cheapest.price) : 0;
 
   return (
     <Link
@@ -70,13 +71,11 @@ function ProductTile({ product }: { product: Product }) {
         {cheapest?.price?.price != null ? (
           <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-1">
             <p className="text-sm font-bold text-ink">
+              {formatCurrency(storePrice(cheapest.price.price, cheapest.price.currency ?? "USD"), cheapest.price.currency ?? "USD")}
+            </p>
+            <p className="text-xs text-ink-soft line-through">
               {formatCurrency(cheapest.price.price, cheapest.price.currency ?? "USD")}
             </p>
-            {cheapest.price.compare_at_price && savings !== null ? (
-              <p className="text-xs text-ink-soft line-through">
-                {formatCurrency(cheapest.price.compare_at_price, cheapest.price.currency ?? "USD")}
-              </p>
-            ) : null}
           </div>
         ) : (
           <p className="mt-auto pt-1 text-sm font-semibold">—</p>
