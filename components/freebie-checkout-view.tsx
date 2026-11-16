@@ -17,7 +17,6 @@ import {
   Users,
 } from "lucide-react";
 
-import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { useFreebieCampaigns } from "@/components/freebie-panel";
 import { FreebieOrderButton } from "@/components/freebie-order-button";
@@ -27,11 +26,10 @@ import {
   FreebiePrice,
   FreebieSegments,
   FreebieStatusPill,
-  formatMoney,
   spotsLeft,
 } from "@/components/freebie-ui";
 import { Skeleton } from "@/components/ui/skeleton";
-import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice } from "@/lib/discount";
+
 import { subscribeCart, type CartItem } from "@/lib/firebase/cart";
 import { freebieApi } from "@/lib/freebies/client";
 import type { PublicCampaign } from "@/lib/freebies/types";
@@ -40,7 +38,6 @@ import { cn } from "@/lib/utils";
 /** Freebie-only campaign setup and progress; paid retailer links stay on /checkout. */
 export function FreebieCheckoutView() {
   const { user, loading } = useAuth();
-  const { currency } = useCurrency();
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartReady, setCartReady] = useState(false);
@@ -87,27 +84,11 @@ export function FreebieCheckoutView() {
     return <SignedOutHero />;
   }
 
-  // Cart rows hold the USD list price; the hero quotes what the shopper would
-  // actually pay us for these items (80% off), in their own currency.
-  const totalValue = items.reduce(
-    (sum, item) => sum + storeLineTotal(item.price ?? 0, item.quantity ?? 1, currency),
-    0,
-  );
-  const listValue = items.reduce(
-    (sum, item) => sum + storeListPrice(item.price ?? 0, currency) * (item.quantity ?? 1),
-    0,
-  );
   const unlocked = items.filter((item) => campaigns[item.productId]?.status === "completed").length;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <FreebieHero
-        totalValue={totalValue}
-        listValue={listValue}
-        currency={currency}
-        unlocked={unlocked}
-        count={items.length}
-      />
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+      <FreebieHero unlocked={unlocked} count={items.length} />
 
       {error ? (
         <p
@@ -121,7 +102,7 @@ export function FreebieCheckoutView() {
       {items.length === 0 ? (
         <EmptyCart />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2.5 sm:gap-3">
           {items.map((item) => (
             <FreebieItem
               key={item.productId}
@@ -139,20 +120,8 @@ export function FreebieCheckoutView() {
   );
 }
 
-/** Above-the-fold pitch: shows the money at stake and the 3 steps in one glance. */
-function FreebieHero({
-  totalValue,
-  listValue,
-  currency,
-  unlocked,
-  count,
-}: {
-  totalValue: number;
-  listValue: number;
-  currency: string;
-  unlocked: number;
-  count: number;
-}) {
+/** Above-the-fold pitch: what you pay, and the 3 steps in one glance. */
+function FreebieHero({ unlocked, count }: { unlocked: number; count: number }) {
   const hasItems = count > 0;
   return (
     <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#011627] via-[#0b3d59] to-[#1d7fa4] px-4 py-4 text-white sm:px-6 sm:py-5">
@@ -172,25 +141,12 @@ function FreebieHero({
           </h1>
           {hasItems ? (
             <p className="mt-1 text-xs leading-5 text-white/80 sm:text-sm">
-              You&apos;re about to save{" "}
-              <span className="font-extrabold text-white">{formatMoney(totalValue, currency)}</span>
-              {listValue > totalValue ? (
-                <>
-                  {" "}
-                  <span className="text-white/60 line-through">
-                    {formatMoney(listValue, currency)}
-                  </span>{" "}
-                  <span className="rounded bg-[#ffdd48] px-1 py-0.5 text-[10px] font-extrabold text-[#7a4a00]">
-                    {STORE_DISCOUNT_PERCENT}% OFF
-                  </span>
-                </>
-              ) : null}
-              . Invite <span className="font-extrabold text-white">15 verified friends</span> in 7 days —
-              no purchase needed.
+              Invite <span className="font-extrabold text-white">15 verified friends</span> in 7 days and
+              pay <span className="font-extrabold text-white">0</span> — no purchase needed.
             </p>
           ) : (
             <p className="mt-1 text-xs leading-5 text-white/80 sm:text-sm">
-              Pick any product, invite 15 verified friends in 7 days, and pay ₨0 at checkout.
+              Pick any product, invite 15 verified friends in 7 days, and pay 0 at checkout.
             </p>
           )}
         </div>
@@ -199,7 +155,7 @@ function FreebieHero({
       <div className="relative z-10 mt-3 grid grid-cols-3 gap-2">
         <HeroStep icon={Gift} label="Add to cart" done />
         <HeroStep icon={Users} label="Invite 15" done={unlocked > 0} />
-        <HeroStep icon={Sparkles} label="Pay ₨0" done={false} />
+        <HeroStep icon={Sparkles} label="Pay 0" done={false} />
       </div>
     </section>
   );
@@ -311,7 +267,7 @@ function HowItWorks() {
         </li>
         <li className="flex gap-2">
           <span className="grid size-4 shrink-0 place-items-center rounded-full bg-brand text-[9px] font-extrabold text-white">3</span>
-          At 15 verified referrals, your order unlocks at ₨0.
+          At 15 verified referrals, your order unlocks at 0.
         </li>
       </ol>
     </section>
@@ -329,7 +285,6 @@ function FreebieItem({
   busy: boolean;
   onStart: () => void;
 }) {
-  const { currency } = useCurrency();
   const active = campaign?.status === "active";
   const done = campaign?.status === "completed";
   const percent = campaign ? campaignPercent(campaign.referralCount, campaign.target) : 0;
@@ -365,9 +320,8 @@ function FreebieItem({
               {item.brand}
             </p>
           ) : null}
-          <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
-            <FreebiePrice price={item.price} currency={currency} cartPrice />
-            <span className="text-sm font-extrabold text-stock">FREE</span>
+          <div className="mt-1">
+            <FreebiePrice />
           </div>
         </div>
       </div>

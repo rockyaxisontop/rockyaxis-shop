@@ -1,7 +1,6 @@
 import { Flame, Gift, Timer } from "lucide-react";
 
 import { convertFromUsd, formatLocal } from "@/lib/currency";
-import { STORE_DISCOUNT_PERCENT, storeListPrice, storePrice } from "@/lib/discount";
 import { cn } from "@/lib/utils";
 
 /** Milliseconds left before a campaign closes (0 when it already has). */
@@ -40,51 +39,36 @@ export function formatSavings(amount: number, currency: string) {
 }
 
 /**
- * Was → now price row. `price` is our discounted price, `listPrice` the
- * original source listing; the shrink is what makes the freebie feel valuable.
+ * The price shown on every campaign screen: FREE, costing 0.
+ *
+ * Campaigns deliberately never show a running price, a strike-through list price
+ * or a discount badge — the only figure that matters is what you pay.
  */
 export function FreebiePrice({
-  price,
-  listPrice,
-  currency,
-  cartPrice,
+  size = "md",
   className,
 }: {
-  /**
-   * Set when `price` is a raw USD cart/list amount that still needs our 80%
-   * discount applied (the /freebie page reads prices straight from the cart).
-   */
-  cartPrice?: boolean;
-  /**
-   * Our selling price. When `cartPrice` is set this is the raw USD list price
-   * instead, and the 80% discount is applied here.
-   */
-  price: number;
-  /** Original source listing, same stored currency. */
-  listPrice?: number;
-  /** Visitor's currency to display in. */
-  currency: string;
+  size?: "sm" | "md" | "lg";
   className?: string;
 }) {
-  // Cart rows hold USD list prices; campaign records already hold our price.
-  const sellingUsd = cartPrice ? storePrice(price) : price;
-  const originalUsd = cartPrice ? storeListPrice(price) : listPrice;
-
   return (
-    <span className={cn("flex flex-wrap items-baseline gap-x-1.5", className)}>
-      {originalUsd != null && originalUsd > sellingUsd ? (
-        <span className="text-[11px] text-ink-soft line-through">
-          {formatCampaignMoney(originalUsd, currency)}
-        </span>
-      ) : null}
-      <span className="text-sm font-extrabold text-ink">
-        {formatCampaignMoney(sellingUsd, currency)}
+    <span className={cn("inline-flex items-baseline gap-1.5", className)}>
+      <span
+        className={cn(
+          "leading-none font-black tracking-tight text-stock",
+          size === "lg" ? "text-2xl" : size === "sm" ? "text-xs" : "text-sm",
+        )}
+      >
+        FREE
       </span>
-      {cartPrice ? (
-        <span className="rounded bg-save px-1 py-0.5 text-[9px] font-extrabold text-ink">
-          −{STORE_DISCOUNT_PERCENT}%
-        </span>
-      ) : null}
+      <span
+        className={cn(
+          "rounded-md bg-stock-bg px-1.5 py-0.5 font-extrabold text-stock",
+          size === "lg" ? "text-base" : size === "sm" ? "text-[10px]" : "text-[11px]",
+        )}
+      >
+        0
+      </span>
     </span>
   );
 }

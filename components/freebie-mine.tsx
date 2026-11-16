@@ -30,7 +30,6 @@ import {
   FreebieSegments,
   FreebieSocialProof,
   FreebieStatusPill,
-  formatCampaignMoney,
   spotsLeft,
 } from "@/components/freebie-ui";
 import { cn } from "@/lib/utils";
@@ -123,8 +122,6 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
   const done = campaign.status === "completed";
   const expired = campaign.status === "expired" || campaign.status === "cancelled";
   const remaining = spotsLeft(campaign.referralCount, campaign.target);
-  // Stored in USD; quoted in the visitor's currency.
-  const price = formatCampaignMoney(campaign.product.price, currency);
 
   async function copy() {
     if (!link) return;
@@ -221,7 +218,7 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
             ? "Place your free order below and it ships to you."
             : expired
               ? "Start again for a fresh 7-day window and a new link."
-              : `Worth ${price}. Every verified friend who taps your link brings you closer — no purchase needed.`}
+              : "Every verified friend who taps your link brings your FREE order closer — no purchase needed."}
         </p>
 
         <div className="relative z-10 mt-3 rounded-xl bg-white/10 px-3 py-2.5 backdrop-blur">
@@ -253,13 +250,8 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
             </p>
           ) : null}
           <p className="line-clamp-1 text-sm font-bold text-ink">{campaign.product.title}</p>
-          <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5">
-            <FreebiePrice
-              price={campaign.product.price}
-              listPrice={campaign.product.listPrice}
-              currency={currency}
-            />
-            <span className="text-sm font-extrabold text-stock">FREE</span>
+          <div className="mt-0.5">
+            <FreebiePrice />
           </div>
         </div>
         <Link
@@ -352,9 +344,13 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
         </p>
       ) : null}
 
+      {/* Reserve room for the sticky bar so it never covers the last row. */}
       <Link
         href="/"
-        className="mt-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-ink-soft transition hover:text-brand"
+        className={cn(
+          "mt-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-ink-soft transition hover:text-brand",
+          !done && !expired && "mb-14 sm:mb-0",
+        )}
       >
         <Sparkles className="size-3.5" />
         Browse more products
@@ -363,7 +359,7 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
 
       {/* Sticky share bar on phones: sharing is never more than a thumb away. */}
       {!done && !expired ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white/95 px-3 py-2.5 backdrop-blur sm:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white/95 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
           <div className="flex gap-2">
             <button
               type="button"

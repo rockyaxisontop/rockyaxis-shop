@@ -24,7 +24,9 @@ export function FloatingOrderContact() {
   }, [open]);
 
   return (
-    <div className={cn("fixed right-4 z-[60]", hasStickyBar ? "bottom-20" : "bottom-4")}>
+    // The campaign page has a sticky share bar along the bottom edge on phones;
+    // hide the bubble there so it can never cover the Share button.
+    <div className={cn("fixed right-4 z-[60]", hasStickyBar ? "hidden sm:block sm:bottom-4" : "bottom-4")}>
       {open ? (
         <section
           id="order-contact-panel"

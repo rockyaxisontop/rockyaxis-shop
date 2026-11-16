@@ -19,7 +19,6 @@ import {
   Users,
 } from "lucide-react";
 
-import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { addToCart } from "@/lib/firebase/cart";
 import { freebieApi } from "@/lib/freebies/client";
@@ -27,11 +26,8 @@ import type { PublicCampaign } from "@/lib/freebies/types";
 import {
   campaignPercent,
   FreebieCountdown,
-  FreebiePrice,
   FreebieSegments,
-  FreebieSocialProof,
   FreebieStatusPill,
-  formatCampaignMoney,
   spotsLeft,
 } from "@/components/freebie-ui";
 import { cn } from "@/lib/utils";
@@ -39,7 +35,6 @@ import { cn } from "@/lib/utils";
 /** Landing page for an invited user: shows progress and counts their referral. */
 export function FreebieClaim({ code }: { code: string }) {
   const { user, loading } = useAuth();
-  const { currency } = useCurrency();
   const pathname = usePathname();
   const router = useRouter();
   const [campaign, setCampaign] = useState<PublicCampaign | null>(null);
@@ -140,57 +135,72 @@ export function FreebieClaim({ code }: { code: string }) {
   const done = campaign.status === "completed";
   const expired = campaign.status === "expired" || campaign.status === "cancelled";
   const remaining = spotsLeft(campaign.referralCount, campaign.target);
-  // Campaign amounts are stored in USD; show them in the visitor's currency.
-  const price = formatCampaignMoney(campaign.product.price, currency);
-  // What the shopper pays at MT Store today — that is what going free is worth.
-  const saved = price;
-  const listPrice = campaign.product.listPrice
-    ? formatCampaignMoney(campaign.product.listPrice, currency)
-    : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-3 py-3 sm:gap-4 sm:py-6">
-      {/* Hero: the deal, the money at stake, the clock — all above the fold. */}
-      <section
-        className={cn(
-          "relative overflow-hidden rounded-2xl px-4 pt-4 pb-4 text-white sm:px-5",
-          done
-            ? "bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-600"
-            : "bg-gradient-to-br from-[#011627] via-[#0b3d59] to-[#1d7fa4]",
-        )}
-      >
-        <span className="pointer-events-none absolute -top-10 -right-10 size-36 rounded-full bg-white/10" />
-        <span className="pointer-events-none absolute -bottom-14 -left-8 size-36 rounded-full border-[16px] border-white/10" />
-
-        <div className="relative z-10 flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-extrabold tracking-wide uppercase backdrop-blur">
-            <Gift className="size-3" />
-            Friend invite · freebie
-          </span>
-          <FreebieCountdown expiresAt={campaign.expiresAt} status={campaign.status} />
-        </div>
-
-        <h1 className="relative z-10 mt-2.5 text-xl leading-[1.15] font-extrabold tracking-tight text-balance sm:text-3xl">
-          {done ? (
-            <>🎉 This item is unlocked!</>
-          ) : expired ? (
-            <>This freebie has ended</>
-          ) : (
-            <>
-              Help unlock this for <span className="text-[#ffdd48]">{saved}</span> off
-            </>
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-3 py-2 sm:gap-4 sm:py-6">
+      {/* One card carries everything that matters: what it is, what it costs,
+          how far along it is, and the action — all readable without scrolling. */}
+      <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        <div
+          className={cn(
+            "relative overflow-hidden px-4 pt-3 pb-3.5 text-white sm:px-5 sm:pt-4",
+            done
+              ? "bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-600"
+              : "bg-gradient-to-br from-[#011627] via-[#0b3d59] to-[#1d7fa4]",
           )}
-        </h1>
-        <p className="relative z-10 mt-1.5 max-w-sm text-xs leading-5 text-white/85 sm:text-sm">
-          {done
-            ? "The goal was reached — thanks to everyone who helped."
-            : expired
-              ? "Ask your friend to start a fresh campaign, then come back."
-              : `Just ${remaining} verified ${remaining === 1 ? "person" : "people"} needed. Helping takes 10 seconds and costs nothing.`}
-        </p>
+        >
+          <span className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-white/10" />
 
-        <div className="relative z-10 mt-3 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 backdrop-blur">
-          <div className="flex-1">
+          <div className="relative z-10 flex items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase backdrop-blur">
+              <Gift className="size-3" />
+              Freebie invite
+            </span>
+            <FreebieCountdown expiresAt={campaign.expiresAt} status={campaign.status} />
+          </div>
+
+          <h1 className="relative z-10 mt-2 text-lg leading-[1.15] font-extrabold tracking-tight text-balance sm:text-2xl">
+            {done ? (
+              <>🎉 This item is unlocked!</>
+            ) : expired ? (
+              <>This freebie has ended</>
+            ) : (
+              <>
+                Help unlock this — <span className="text-[#ffdd48]">FREE</span>
+              </>
+            )}
+          </h1>
+
+          <div className="relative z-10 mt-2 flex items-stretch gap-2.5">
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-white/10 sm:size-20">
+              {campaign.product.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={campaign.product.image} alt="" className="size-full object-cover" />
+              ) : null}
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col justify-center">
+              <p className="line-clamp-2 text-[13px] leading-snug font-bold sm:text-sm">
+                {campaign.product.title}
+              </p>
+              {campaign.product.brand ? (
+                <p className="mt-0.5 truncate text-[10px] font-bold tracking-wider text-white/60 uppercase">
+                  {campaign.product.brand}
+                </p>
+              ) : null}
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="text-[13px] font-black tracking-tight text-[#ffdd48]">FREE</span>
+                <span className="rounded bg-[#ffdd48] px-1.5 py-0.5 text-[10px] font-extrabold text-[#7a4a00]">
+                  0
+                </span>
+                <FreebieStatusPill
+                  status={done ? "completed" : campaign.status}
+                  className="shrink-0 bg-white/20 text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-2.5 rounded-xl bg-white/10 px-2.5 py-1.5 backdrop-blur">
             <FreebieSegments count={campaign.referralCount} target={campaign.target} done={done} />
             <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold text-white/90">
               <Users className="size-3.5" aria-hidden />
@@ -199,65 +209,18 @@ export function FreebieClaim({ code }: { code: string }) {
             </p>
           </div>
         </div>
-      </section>
 
-      {/* Product card: price → ₨0, savings badge, social proof. */}
-      <section className="rounded-2xl border border-border bg-white p-3 shadow-sm sm:p-4">
-        <div className="flex items-center gap-3">
-          <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-surface-2 sm:size-24">
-            {campaign.product.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={campaign.product.image} alt="" className="size-full object-cover" />
-            ) : null}
-            <span className="absolute top-1.5 left-1.5 rounded-md bg-[#ffdd48] px-1.5 py-0.5 text-[9px] font-extrabold text-[#7a4a00] shadow">
-              FREE
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <p className="line-clamp-2 text-sm leading-snug font-bold text-ink sm:text-base">
-                {campaign.product.title}
-              </p>
-              <FreebieStatusPill status={done ? "completed" : campaign.status} className="shrink-0" />
-            </div>
-            {campaign.product.brand ? (
-              <p className="mt-0.5 truncate text-[10px] font-bold tracking-wider text-ink-soft uppercase">
-                {campaign.product.brand}
-              </p>
-            ) : null}
-            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <FreebiePrice
-                price={campaign.product.price}
-                listPrice={campaign.product.listPrice}
-                currency={currency}
-              />
-              <span className="text-lg font-extrabold text-stock">FREE</span>
-              <span className="rounded-full bg-stock-bg px-2 py-0.5 text-[10px] font-extrabold text-stock">
-                You save {saved}
-              </span>
-              {listPrice ? (
-                <span className="rounded-full bg-save px-1.5 py-0.5 text-[10px] font-extrabold text-ink">
-                  {campaign.product.discountPercent ?? 80}% off list
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        <p className="px-4 pt-2.5 text-[11px] leading-4 font-semibold text-ink-soft">
+          {done
+            ? "Goal reached — nothing left to do. Thanks to everyone who helped."
+            : expired
+              ? "This campaign ended. Start your own for this item in one tap."
+              : `${remaining} more verified ${remaining === 1 ? "person" : "people"} needed. Helping takes 10 seconds and costs nothing.`}
+        </p>
 
-        <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2">
-          <FreebieSocialProof count={campaign.referralCount} target={campaign.target} />
-          <Link
-            href={`/products/${campaign.product.productId}`}
-            className="shrink-0 text-[11px] font-bold text-brand hover:underline"
-          >
-            Details
-          </Link>
-        </div>
-      </section>
-
-      {/* Action: single primary CTA per state. */}
-      <section className="rounded-2xl border border-border bg-white p-3 shadow-sm sm:p-4">
-        {!user ? (
+        {/* Action sits directly under the progress, so it is never a scroll away. */}
+        <div className="p-3 pt-0 sm:p-4 sm:pt-0">
+          {!user ? (
           <>
             <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-xs font-semibold text-ink-soft">
               <LogIn className="size-3.5" />
@@ -297,7 +260,7 @@ export function FreebieClaim({ code }: { code: string }) {
             <div className="mt-2.5 rounded-xl border border-[#f36d25]/25 bg-[#fff6ef] px-3 py-2.5">
               <p className="flex items-center gap-1.5 text-xs font-extrabold text-[#b34a12]">
                 <TrendingUp className="size-3.5" />
-                Now get {saved} worth of stuff for free yourself
+                Now get your own items for free
               </p>
               <p className="mt-1 text-[11px] leading-4 text-ink-soft">
                 Same product, same rules. Start in one tap — it&apos;s already in your cart.
@@ -327,7 +290,7 @@ export function FreebieClaim({ code }: { code: string }) {
               <PartyPopper className="size-4" />
               Goal reached — nothing left to do
             </p>
-            <p className="mt-2 text-xs text-ink-soft">Want your own free {price} item? Start a campaign in seconds.</p>
+            <p className="mt-2 text-xs text-ink-soft">Want your own free item? Start a campaign in seconds.</p>
             <button
               type="button"
               onClick={startMine}
@@ -378,12 +341,13 @@ export function FreebieClaim({ code }: { code: string }) {
           </>
         )}
 
-        {message && !campaign.alreadyReferred && !done ? (
-          <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-xs font-medium text-ink-soft">
-            <Check className="size-3.5 text-stock" />
-            {message}
-          </p>
-        ) : null}
+          {message && !campaign.alreadyReferred && !done ? (
+            <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-xs font-medium text-ink-soft">
+              <Check className="size-3.5 text-stock" />
+              {message}
+            </p>
+          ) : null}
+        </div>
       </section>
 
       {/* Growth loop: turn a helper into an owner immediately. */}
@@ -397,7 +361,7 @@ export function FreebieClaim({ code }: { code: string }) {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-xs font-extrabold text-[#b34a12]">
-              Why help for nothing? Get {saved} back
+              Why help for nothing? Get yours for free
             </span>
             <span className="block text-[11px] leading-4 text-ink-soft">
               Start your own campaign and unlock the same item free.
