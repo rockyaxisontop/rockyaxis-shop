@@ -13,14 +13,17 @@ const CurrencyCtx = createContext<CurrencyContext>(currencyContext("US"));
  */
 export function CurrencyProvider({
   currency,
+  country,
   children,
 }: {
   /** ISO code resolved on the server, e.g. "NPR". */
   currency?: string;
+  /** ISO-3166 country resolved on the server, e.g. "NP". */
+  country?: string;
   children: ReactNode;
 }) {
   return (
-    <CurrencyCtx.Provider value={currencyContext(undefined, currency)}>{children}</CurrencyCtx.Provider>
+    <CurrencyCtx.Provider value={currencyContext(country, currency)}>{children}</CurrencyCtx.Provider>
   );
 }
 

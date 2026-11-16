@@ -7,31 +7,93 @@ import { getCurrencyContext } from "@/lib/currency/server";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { FloatingOrderContact } from "@/components/floating-order-contact";
+import { SiteStructuredData } from "@/components/structured-data";
+import { SITE_DESCRIPTION, SITE_LOCALE, SITE_NAME, SITE_URL } from "@/lib/site";
 
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "MT-Shop",
     template: "%s · MT-Shop",
   },
   description: "Find any product online, compare offers and buy from the best store.",
+  applicationName: SITE_NAME,
+  keywords: [
+    "online shopping Nepal",
+    "buy electronics online",
+    "compare prices",
+    "mobile phones",
+    "laptops",
+    "headphones",
+    "smartwatches",
+    "MT Store",
+  ],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE,
+    url: SITE_URL,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  formatDetection: { telephone: false, address: false, email: false },
+  category: "shopping",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#1d7fa4",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Prices are shown in the visitor's own currency, from their request country.
-  const { currency } = await getCurrencyContext();
+  // Prices, shop location and delivery copy all follow the visitor's country.
+  const { currency, country } = await getCurrencyContext();
 
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        {/* Sets the mobile browser UI colour to the brand teal. */}
+        <meta name="theme-color" content="#1d7fa4" />
+      </head>
       {/* flex-col lets `main` grow so the footer sits at the bottom on short pages */}
       <body className="flex min-h-dvh flex-col bg-surface font-sans antialiased">
+        <SiteStructuredData />
+        {/* Keyboard/screen-reader users can jump straight past the navigation. */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-brand focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
         <Providers>
-          <CurrencyProvider currency={currency}>
+          <CurrencyProvider currency={currency} country={country}>
             <SiteHeader />
-            <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6">{children}</main>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6"
+            >
+              {children}
+            </main>
             <SiteFooter />
             <FloatingOrderContact />
           </CurrencyProvider>

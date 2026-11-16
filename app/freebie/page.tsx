@@ -6,6 +6,7 @@ import { ProductSuggestions } from "@/components/product-suggestions";
 export const metadata: Metadata = {
   title: "Get items for free",
   description: "Invite 15 verified friends in 7 days and get your cart item for ₨0 — no purchase needed.",
+  alternates: { canonical: "/freebie" },
 };
 
 export default function FreebieCheckoutPage() {

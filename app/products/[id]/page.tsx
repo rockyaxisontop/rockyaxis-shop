@@ -8,6 +8,7 @@ import { getProduct } from "@/lib/channel3/products";
 import { getCurrencyContext } from "@/lib/currency/server";
 import { storeListPrice, storePrice } from "@/lib/discount";
 import { discountPercent, formatMoney } from "@/lib/format";
+import { SITE_NAME, absoluteUrl } from "@/lib/site";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -18,12 +19,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   try {
     const { id } = await params;
     const product = await getProduct(id);
+    const description = product.description?.slice(0, 160);
+    // Variant links differ only by query string — point them at the clean URL.
+    const canonical = `/products/${encodeURIComponent(id)}`;
+    const image = product.images?.[0]?.url;
     return {
       title: product.title,
-      description: product.description?.slice(0, 160),
+      description,
+      alternates: { canonical },
+      openGraph: {
+        type: "website",
+        title: product.title,
+        description,
+        url: canonical,
+        images: image ? [{ url: image, alt: product.title }] : undefined,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: product.title,
+        description,
+        images: image ? [image] : undefined,
+      },
     };
   } catch {
-    return { title: "Product" };
+    return { title: "Product", robots: { index: false, follow: true } };
   }
 }
 
@@ -56,15 +75,83 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
     undefined,
   );
 
+  // Structured data for rich results: price, availability and brand exactly as
+  // shown on the page (our discounted selling price, in the visitor's currency).
+  const productJsonLd =
+    lowestOffer?.price?.price != null
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.title,
+          description: product.description?.slice(0, 500),
+          image: product.images?.map((image) => image.url).filter(Boolean),
+          sku: product.id,
+          brand: product.brands?.[0]?.name
+            ? { "@type": "Brand", name: product.brands[0].name }
+            : undefined,
+          category: product.category?.title,
+          offers: {
+            "@type": "Offer",
+            url: absoluteUrl(`/products/${encodeURIComponent(product.id)}`),
+            price: storePrice(lowestOffer.price.price, currency),
+            priceCurrency: currency,
+            availability: offers.some((offer) => offer.availability === "InStock")
+              ? "https://schema.org/InStock"
+              : "https://schema.org/OutOfStock",
+            itemCondition: "https://schema.org/NewCondition",
+            seller: { "@type": "Organization", name: SITE_NAME },
+          },
+        }
+      : null;
+
   return (
     <div className="flex flex-col gap-6 sm:gap-12">
+      {productJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        />
+      ) : null}
+      {/* Matches the visible breadcrumb below, so results show the page trail. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+              { "@type": "ListItem", position: 2, name: "Search", item: absoluteUrl("/search") },
+              ...(product.category?.title
+                ? [
+                    {
+                      "@type": "ListItem",
+                      position: 3,
+                      name: product.category.title,
+                      item: absoluteUrl(`/search?q=${encodeURIComponent(product.category.title)}`),
+                    },
+                  ]
+                : []),
+              // Product is always the final step, whatever came before it.
+              {
+                "@type": "ListItem",
+                position: product.category?.title ? 4 : 3,
+                name: product.title,
+                item: absoluteUrl(`/products/${encodeURIComponent(product.id)}`),
+              },
+            ].map((entry, index) => ({ ...entry, position: index + 1 })),
+          }),
+        }}
+      />
       <nav aria-label="Breadcrumb" className="truncate text-sm text-ink-soft">
         <Link href="/search" className="hover:text-foreground">
           Search
         </Link>
         {product.category?.title ? (
           <>
-            <span className="px-1.5">/</span>
+            <span className="px-1.5" aria-hidden>
+              /
+            </span>
             <span>{product.category.title}</span>
           </>
         ) : null}

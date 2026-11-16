@@ -23,3 +23,14 @@ export async function getCurrencyContext(): Promise<CurrencyContext> {
   void h.get(OPT_OUT_HEADER);
   return currencyContext(country);
 }
+
+/**
+ * Just the visitor's ISO country code, or null when the request has no geo data.
+ * Used for country-aware copy such as "Delivered across Nepal".
+ */
+export async function getVisitorCountry(): Promise<string | null> {
+  const h = await headers();
+  const country =
+    h.get(COUNTRY_HEADER) ?? h.get("cf-ipcountry") ?? process.env.DEFAULT_COUNTRY ?? null;
+  return country ? country.toUpperCase() : null;
+}

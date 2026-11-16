@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Facebook, Instagram, Mail, MapPin, Music2, Phone, Youtube } from "lucide-react";
 import mtStoreLogo from "../mt-store-white.png";
 
+import { useCurrency } from "@/components/currency-provider";
+
 
 
 const popularSearches = [
@@ -39,6 +41,8 @@ const socialLinks = [
 ];
 
 export function SiteFooter() {
+  const { locationLabel, countryName } = useCurrency();
+
   return (
     <footer className="mt-12 border-t border-border bg-white">
       <div className="mx-auto w-full max-w-7xl px-4">
@@ -69,7 +73,10 @@ export function SiteFooter() {
             <address className="mt-4 flex flex-col gap-3 text-sm not-italic text-ink-soft">
               <p className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-brand" />
-                <span>Lalitpur, Kathmandu, Nepal</span>
+                <span>
+                  {locationLabel}
+                  <span className="block text-xs">Delivering across {countryName}</span>
+                </span>
               </p>
               <a className="flex items-center gap-2.5 hover:text-brand" href="tel:+9779714501791">
                 <Phone className="size-4 shrink-0 text-brand" />

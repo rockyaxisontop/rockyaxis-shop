@@ -10,6 +10,7 @@
  *  - the final digits should be a tidy round figure rather than a random one.
  */
 
+import { countryCapital, countryLocationLabel, countryName } from "../countries";
 import { currencyForCountry } from "./countries";
 import { USD_RATES } from "./rates";
 
@@ -20,6 +21,12 @@ export type CurrencyContext = {
   currency: string;
   /** Locale used only to group digits / place the symbol. */
   locale: string;
+  /** English country name, e.g. "Nepal". */
+  countryName: string;
+  /** Capital city of that country, e.g. "Kathmandu". */
+  capital: string;
+  /** "Kathmandu, Nepal" — where the store ships from. */
+  locationLabel: string;
 };
 
 /** Countries where prices are conventionally spoken in whole units. */
@@ -111,9 +118,13 @@ export function formatLocal(amount: number, currency: string, locale?: string): 
  */
 export function currencyContext(countryCode?: string | null, currency?: string): CurrencyContext {
   const resolved = currency?.toUpperCase() ?? currencyForCountry(countryCode);
+  const country = (countryCode ?? "US").toUpperCase();
   return {
-    country: (countryCode ?? "US").toUpperCase(),
+    country,
     currency: resolved,
     locale: CURRENCY_LOCALE[resolved] ?? "en-US",
+    countryName: countryName(country),
+    capital: countryCapital(country),
+    locationLabel: countryLocationLabel(country),
   };
 }

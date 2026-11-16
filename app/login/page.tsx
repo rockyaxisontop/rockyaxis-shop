@@ -3,7 +3,12 @@ import { Suspense } from "react";
 
 import { LoginForm } from "@/components/login-form";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = {
+  title: "Sign in",
+  alternates: { canonical: "/login" },
+  // A sign-in form has nothing to rank for.
+  robots: { index: false, follow: true },
+};
 
 export default function LoginPage() {
   return (

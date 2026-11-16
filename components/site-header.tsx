@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { signOutUser } from "@/lib/firebase/auth";
 
@@ -43,6 +44,7 @@ export function SiteHeader() {
   const showGlobalSearch = pathname !== "/search";
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { locationLabel, countryName } = useCurrency();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -126,16 +128,19 @@ export function SiteHeader() {
   );
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-[0_1px_0_var(--color-border)]">
+    <header
+      aria-label="Site header"
+      className="sticky top-0 z-40 bg-white shadow-[0_1px_0_var(--color-border)]"
+    >
       {/* Top info bar — desktop only */}
       <div className="hidden border-b border-border bg-surface-2 lg:block">
         <div className="mx-auto flex h-9 w-full max-w-7xl items-center justify-between px-4 text-[11px] text-ink-soft">
           <span className="flex items-center gap-1.5">
             <MapPin className="size-3.5 text-brand" />
-            Store Location: Kathmandu Valley
+            Store Location: <span className="font-medium text-ink">{locationLabel}</span>
           </span>
           <div className="flex items-center gap-5">
-            <span>Free delivery on every order</span>
+            <span>Free delivery across {countryName}</span>
             <Link href="/search" className="font-medium text-brand hover:underline">
               Dashain – Tihar Offers →
             </Link>
@@ -219,6 +224,12 @@ export function SiteHeader() {
               Home
               <ChevronRight className="ml-auto size-4 text-ink-soft" />
             </Link>
+            <p className="flex items-center gap-2 border-b border-border py-2.5 text-xs text-ink-soft">
+              <MapPin className="size-4 shrink-0 text-brand" />
+              <span>
+                Delivering to <span className="font-semibold text-ink">{countryName}</span>
+              </span>
+            </p>
             <p className="pt-3 pb-1 text-[11px] font-bold tracking-wider text-ink-soft uppercase">
               Shop by category
             </p>

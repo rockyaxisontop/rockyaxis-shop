@@ -3,53 +3,37 @@ import Link from "next/link";
 import { ArrowRight, CircleHelp, Mail } from "lucide-react";
 
 import { ProductSuggestions } from "@/components/product-suggestions";
+import { FAQ_QUESTIONS } from "@/lib/faq";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Frequently asked questions",
   description: "Answers about shopping, offers, freebie campaigns, and your MT Store account.",
+  alternates: { canonical: "/faq" },
 };
 
-const questions = [
-  {
-    question: "What is MT Store?",
-    answer:
-      "MT Store helps you discover products and compare available offers from online retailers. You can browse curated suggestions or search for a particular product.",
-  },
-  {
-    question: "How do I buy a product?",
-    answer:
-      "Open a product and choose a retailer offer, or use Buy now from your checkout list. You’ll continue to the retailer’s website to complete the purchase. The retailer handles its checkout, stock, shipping, and return terms.",
-  },
-  {
-    question: "Are displayed prices final?",
-    answer:
-      "Prices and availability can change. Check the retailer’s listing for the latest price, shipping costs, taxes, and other terms before placing an order.",
-  },
-  {
-    question: "How does a freebie campaign work?",
-    answer:
-      "Start a campaign for an eligible product and share its referral link. The campaign unlocks when 15 unique people with verified email accounts have helped within the campaign’s 7-day window. Helping does not require a purchase.",
-  },
-  {
-    question: "What happens after my campaign is unlocked?",
-    answer:
-      "The campaign owner can place the free order from the campaign page. You’ll see an order confirmation after it is placed. Please refer to the confirmation and any follow-up from the store for delivery details.",
-  },
-  {
-    question: "Do I need an account to use MT Store?",
-    answer:
-      "You can browse products without signing in. An account is required for features such as saving cart items, starting a freebie campaign, and counting a referral.",
-  },
-  {
-    question: "How can I get help?",
-    answer:
-      "For questions about MT Store, contact support@mtstore.com. For an order completed on a retailer’s site, contact that retailer directly using its order confirmation.",
-  },
-];
+const questions = FAQ_QUESTIONS;
+
+/** Helps search engines show these answers as rich results. */
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ_QUESTIONS.map(({ question, answer }) => ({
+    "@type": "Question",
+    name: question,
+    acceptedAnswer: { "@type": "Answer", text: answer },
+  })),
+  url: absoluteUrl("/faq"),
+};
 
 export default function FAQPage() {
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-9 py-4 sm:gap-12 sm:py-8">
+      <script
+        type="application/ld+json"
+        // Serialized server-side from a fixed constant; no user input.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <header className="rounded-3xl bg-gradient-to-br from-[#011627] via-[#0b3d59] to-[#1d7fa4] px-6 py-9 text-white sm:px-9 sm:py-11">
         <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
           <CircleHelp className="size-3.5" />
