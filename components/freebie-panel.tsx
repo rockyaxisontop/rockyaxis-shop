@@ -45,7 +45,7 @@ export function FreebiePanel({
           type="button"
           onClick={start}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-brand/50 bg-brand-tint px-2.5 py-1.5 text-[11px] font-bold text-brand transition hover:border-brand hover:bg-brand/10 disabled:opacity-60"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-[#f36d25]/60 bg-[#fff6ef] px-2.5 text-[11px] font-extrabold text-[#b34a12] transition hover:border-[#f36d25] hover:bg-[#ffe9d8] disabled:opacity-60"
         >
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Gift className="size-3.5" />}
           Get it for FREE
@@ -94,7 +94,7 @@ export function FreebiePanel({
   return (
     <div
       className={cn(
-        "mt-2 rounded-lg border p-2.5",
+        "mt-2 overflow-hidden rounded-lg border p-2.5",
         done ? "border-stock/40 bg-stock-bg" : expired ? "border-border bg-surface-2" : "border-brand/30 bg-brand-tint",
       )}
     >
@@ -117,8 +117,14 @@ export function FreebiePanel({
 
       {!done && !expired ? (
         <>
-          <p className="mt-1.5 text-[11px] text-ink-soft">
-            Share your link — {campaign.target - campaign.referralCount} more to go.
+          <p className="mt-1.5 text-[11px] font-medium text-ink-soft">
+            {campaign.target - campaign.referralCount === 1 ? (
+              <span className="font-bold text-[#ee385e]">Last one! Send it to unlock now.</span>
+            ) : (
+              <>
+                Share your link — <span className="font-bold text-ink">{campaign.target - campaign.referralCount} more</span> to go.
+              </>
+            )}
           </p>
           <div className="mt-2 flex gap-1.5">
             <button

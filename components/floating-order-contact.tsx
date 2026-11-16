@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle, Phone, X } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 const PHONE_NUMBER = "+977-9714501791";
 const WHATSAPP_URL = `https://wa.me/9779714501791?text=${encodeURIComponent("Hello, I need help with an order.")}`;
 
 export function FloatingOrderContact() {
   const [open, setOpen] = useState(false);
+  // Campaign pages have a sticky share bar on phones; keep the bubble clear of it.
+  const hasStickyBar = /^\/freebie\/mine\//.test(usePathname() ?? "");
 
   useEffect(() => {
     if (!open) return;
@@ -19,7 +24,7 @@ export function FloatingOrderContact() {
   }, [open]);
 
   return (
-    <div className="fixed right-4 bottom-4 z-[60]">
+    <div className={cn("fixed right-4 z-[60]", hasStickyBar ? "bottom-20" : "bottom-4")}>
       {open ? (
         <section
           id="order-contact-panel"

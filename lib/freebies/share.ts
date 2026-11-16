@@ -6,5 +6,7 @@ export function getCampaignShareMessage(campaign: PublicCampaign) {
     currency: campaign.product.currency,
   }).format(campaign.product.price);
 
-  return `I'm working toward unlocking ${campaign.product.title} (listed at ${price}) for free. Help by signing in and verifying your email. The goal is 15 unique verified referrals within 7 days, and no purchase is needed to help.`;
+  const left = Math.max(0, campaign.target - campaign.referralCount);
+
+  return `I can get ${campaign.product.title} (worth ${price}) for FREE — I just need ${left} more people to tap my link. It takes 10 seconds, no payment, no purchase. Help me out? 🙏`;
 }
