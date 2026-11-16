@@ -83,7 +83,12 @@ export function FreebieOrderConfirmation({ orderId }: { orderId: string }) {
           <div className="flex justify-between">
             <dt>Total paid</dt>
             <dd className="font-semibold text-ink">
-              {new Intl.NumberFormat("en", { style: "currency", currency: order.currency }).format(0)}
+              {new Intl.NumberFormat("en", {
+                style: "currency",
+                currency: order.currency,
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }).format(0)}
             </dd>
           </div>
         </dl>

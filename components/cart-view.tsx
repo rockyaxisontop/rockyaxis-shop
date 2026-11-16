@@ -4,16 +4,24 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Gift, House, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { useFreebieCampaigns } from "@/components/freebie-panel";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { storeLineTotal, storePrice, STORE_DISCOUNT_PERCENT } from "@/lib/discount";
+import {
+  STORE_DISCOUNT_PERCENT,
+  storeLineTotal,
+  storeListPrice,
+  storePrice,
+} from "@/lib/discount";
+import { formatMoney } from "@/lib/format";
 import { cartItemId, removeFromCart, setCartQuantity, subscribeCart, type CartItem } from "@/lib/firebase/cart";
 import { cn } from "@/lib/utils";
 
 export function CartView() {
   const { user, loading } = useAuth();
+  const { currency: localCurrency } = useCurrency();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
   const { campaigns } = useFreebieCampaigns(Boolean(user));
@@ -61,17 +69,20 @@ export function CartView() {
     );
   }
 
-  const currency = items[0]?.currency ?? "USD";
-  // Customers pay our discounted price; the Channel3 price is only the "was".
-  const listTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Cart items store USD prices; everything shown is converted to the visitor's currency.
+  const currency = localCurrency;
+  const listTotal = items.reduce(
+    (sum, item) => sum + storeListPrice(item.price, currency) * item.quantity,
+    0,
+  );
   const total = items.reduce(
-    (sum, item) => sum + storeLineTotal(item.price, item.quantity, item.currency),
+    (sum, item) => sum + storeLineTotal(item.price, item.quantity, currency),
     0,
   );
   const storeSavingsValue = listTotal - total;
   const unlocked = items.filter((item) => campaigns[item.productId]?.status === "completed");
   const unlockedValue = unlocked.reduce(
-    (sum, item) => sum + storeLineTotal(item.price, item.quantity, item.currency),
+    (sum, item) => sum + storeLineTotal(item.price, item.quantity, currency),
     0,
   );
 
@@ -155,16 +166,16 @@ export function CartView() {
                         <>
                           <span className="text-sm font-extrabold text-stock">FREE</span>
                           <span className="text-xs text-ink-soft line-through">
-                            {formatPrice(storePrice(item.price, item.currency), item.currency)}
+                            {formatMoney(storePrice(item.price, currency), currency)}
                           </span>
                         </>
                       ) : (
                         <>
                           <span className="text-sm font-bold text-ink">
-                            {formatPrice(storePrice(item.price, item.currency), item.currency)}
+                            {formatMoney(storePrice(item.price, currency), currency)}
                           </span>
                           <span className="text-[11px] text-ink-soft line-through">
-                            {formatPrice(item.price, item.currency)}
+                            {formatMoney(storeListPrice(item.price, currency), currency)}
                           </span>
                           <span className="rounded bg-save px-1.5 py-0.5 text-[10px] font-extrabold text-ink">
                             −{STORE_DISCOUNT_PERCENT}%
@@ -217,13 +228,13 @@ export function CartView() {
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-ink-soft">List price</dt>
-                  <dd className="font-semibold text-ink-soft line-through">{formatPrice(listTotal, currency)}</dd>
+                  <dd className="font-semibold text-ink-soft line-through">{formatMoney(listTotal, currency)}</dd>
                 </div>
                 <div className="flex justify-between text-stock">
                   <dt className="flex items-center gap-1">
                     <Tag className="size-3.5" /> MT Store discount ({STORE_DISCOUNT_PERCENT}%)
                   </dt>
-                  <dd className="font-semibold">−{formatPrice(storeSavingsValue, currency)}</dd>
+                  <dd className="font-semibold">−{formatMoney(storeSavingsValue, currency)}</dd>
                 </div>
                 {unlockedValue > 0 ? (
                   <div className="flex justify-between text-stock">
@@ -240,7 +251,7 @@ export function CartView() {
                 <div className="flex justify-between border-t border-border pt-2 text-base">
                   <dt className="font-bold text-ink">Total</dt>
                   <dd className="font-extrabold text-ink">
-                    {formatPrice(Math.max(0, total - unlockedValue), currency)}
+                    {formatMoney(Math.max(0, total - unlockedValue), currency)}
                   </dd>
                 </div>
               </dl>

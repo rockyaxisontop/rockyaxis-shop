@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,9 +16,11 @@ import {
   Truck,
 } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { Skeleton } from "@/components/ui/skeleton";
-import { STORE_DISCOUNT_PERCENT, storeLineTotal, storePrice } from "@/lib/discount";
+import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice, storePrice } from "@/lib/discount";
+import { formatMoney } from "@/lib/format";
 import { cartItemId, subscribeCart, type CartItem } from "@/lib/firebase/cart";
 
 const WHATSAPP_NUMBER = "9779714501791";
@@ -26,6 +28,7 @@ const WHATSAPP_NUMBER = "9779714501791";
 /** Orders are sent to MT Store on WhatsApp so the team can confirm details. */
 export function CheckoutView() {
   const { user, loading } = useAuth();
+  const { currency } = useCurrency();
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
@@ -47,23 +50,19 @@ export function CheckoutView() {
     });
   }, [user]);
 
-  const totalsByCurrency = useMemo(
-    () =>
-      items.reduce<Record<string, number>>((totals, item) => {
-        totals[item.currency] =
-          (totals[item.currency] ?? 0) + storeLineTotal(item.price, item.quantity, item.currency);
-        return totals;
-      }, {}),
-    [items],
-  );
-
-  const listTotalsByCurrency = useMemo(
-    () =>
-      items.reduce<Record<string, number>>((totals, item) => {
-        totals[item.currency] = (totals[item.currency] ?? 0) + item.price * item.quantity;
-        return totals;
-      }, {}),
-    [items],
+  // One total, in the visitor's currency — cart prices are USD internally.
+  const totals = useMemo(
+    () => ({
+      list: items.reduce(
+        (sum, item) => sum + storeListPrice(item.price, currency) * item.quantity,
+        0,
+      ),
+      pay: items.reduce(
+        (sum, item) => sum + storeLineTotal(item.price, item.quantity, currency),
+        0,
+      ),
+    }),
+    [items, currency],
   );
 
   function whatsappLink(message: string) {
@@ -85,8 +84,8 @@ export function CheckoutView() {
         ? `Options: ${Object.entries(item.options).map(([key, value]) => `${key}: ${value}`).join(", ")}`
         : null,
       `Quantity: ${item.quantity}`,
-      `Price each: ${formatPrice(storePrice(item.price, item.currency), item.currency)}`,
-      `Subtotal: ${formatPrice(storeLineTotal(item.price, item.quantity, item.currency), item.currency)}`,
+      `Price each: ${formatMoney(storePrice(item.price, currency), currency)}`,
+      `Subtotal: ${formatMoney(storeLineTotal(item.price, item.quantity, currency), currency)}`,
       `Product link: ${productPageUrl(item)}`,
       "",
       "Please confirm availability, delivery, and the final total. Thank you!",
@@ -105,15 +104,13 @@ export function CheckoutView() {
           ? `   Options: ${Object.entries(item.options).map(([key, value]) => `${key}: ${value}`).join(", ")}`
           : null,
         `   Quantity: ${item.quantity}`,
-        `   Price each: ${formatPrice(storePrice(item.price, item.currency), item.currency)}`,
-        `   Subtotal: ${formatPrice(storeLineTotal(item.price, item.quantity, item.currency), item.currency)}`,
+        `   Price each: ${formatMoney(storePrice(item.price, currency), currency)}`,
+        `   Subtotal: ${formatMoney(storeLineTotal(item.price, item.quantity, currency), currency)}`,
         `   Product link: ${productPageUrl(item)}`,
         "",
       ].filter((line): line is string => line !== null)),
-      `Cart total (${STORE_DISCOUNT_PERCENT}% store discount applied):`,
-      ...Object.entries(totalsByCurrency).map(
-        ([currency, amount]) => `- ${formatPrice(amount, currency)}`,
-      ),
+      `Cart total in ${currency} (${STORE_DISCOUNT_PERCENT}% store discount applied):`,
+      `- ${formatMoney(totals.pay, currency)}`,
       "",
       "Please confirm availability, delivery, and the final total for my order. Thank you!",
     ];
@@ -240,14 +237,14 @@ export function CheckoutView() {
                       ) : null}
                       <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-sm">
                         <span className="font-bold text-ink">
-                          {formatPrice(storeLineTotal(item.price, item.quantity, item.currency), item.currency)}
+                          {formatMoney(storeLineTotal(item.price, item.quantity, currency), currency)}
                         </span>
                         <span className="text-xs text-ink-soft line-through">
-                          {formatPrice(item.price * item.quantity, item.currency)}
+                          {formatMoney(storeListPrice(item.price, currency) * item.quantity, currency)}
                         </span>
                         {item.quantity > 1 ? (
                           <span className="text-xs text-ink-soft">
-                            {formatPrice(storePrice(item.price, item.currency), item.currency)} × {item.quantity}
+                            {formatMoney(storePrice(item.price, currency), currency)} × {item.quantity}
                           </span>
                         ) : null}
                       </p>
@@ -277,26 +274,18 @@ export function CheckoutView() {
                 {items.reduce((count, item) => count + item.quantity, 0)} items · confirm final details with our team
               </p>
               <dl className="mt-4 space-y-2 border-t border-border pt-3">
-                {Object.entries(totalsByCurrency).map(([currency, total]) => (
-                  <Fragment key={currency}>
-                    <div className="flex justify-between gap-3 text-sm">
-                      <dt className="text-ink-soft">List price ({currency})</dt>
-                      <dd className="text-ink-soft line-through">
-                        {formatPrice(listTotalsByCurrency[currency] ?? total, currency)}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3 text-sm text-stock">
-                      <dt>MT Store discount ({STORE_DISCOUNT_PERCENT}%)</dt>
-                      <dd className="font-semibold">
-                        −{formatPrice((listTotalsByCurrency[currency] ?? total) - total, currency)}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3 text-sm">
-                      <dt className="font-semibold text-ink">Your total ({currency})</dt>
-                      <dd className="font-bold text-ink">{formatPrice(total, currency)}</dd>
-                    </div>
-                  </Fragment>
-                ))}
+                <div className="flex justify-between gap-3 text-sm">
+                  <dt className="text-ink-soft">List price ({currency})</dt>
+                  <dd className="text-ink-soft line-through">{formatMoney(totals.list, currency)}</dd>
+                </div>
+                <div className="flex justify-between gap-3 text-sm text-stock">
+                  <dt>MT Store discount ({STORE_DISCOUNT_PERCENT}%)</dt>
+                  <dd className="font-semibold">−{formatMoney(totals.list - totals.pay, currency)}</dd>
+                </div>
+                <div className="flex justify-between gap-3 text-sm">
+                  <dt className="font-semibold text-ink">Your total ({currency})</dt>
+                  <dd className="font-bold text-ink">{formatMoney(totals.pay, currency)}</dd>
+                </div>
                 <div className="flex justify-between gap-3 text-sm">
                   <dt className="text-ink-soft">Delivery</dt>
                   <dd className="font-medium text-ink-soft">Confirm via WhatsApp</dd>
@@ -371,6 +360,4 @@ export function CheckoutView() {
   );
 }
 
-function formatPrice(amount: number, currency: string) {
-  return new Intl.NumberFormat("en", { style: "currency", currency }).format(amount);
-}
+

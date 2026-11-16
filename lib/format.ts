@@ -5,30 +5,54 @@ import type {
   ProductOffer,
 } from "@channel3/sdk/resources";
 
-import { STORE_DISCOUNT_PERCENT, storePrice } from "./discount";
+import { formatLocal } from "./currency";
+import { STORE_DISCOUNT_PERCENT, storeListPrice, storePrice } from "./discount";
 
 /**
  * Format a numeric amount as a localized currency string. Falls back to a
  * plain `CODE 12.34` string when the runtime doesn't recognize the currency.
  */
+/**
+ * Format an amount that is ALREADY in `currency`. Never shows decimals — the
+ * store quotes whole unit prices everywhere.
+ */
 export function formatCurrency(amount: number, currency: string, locale?: string): string {
   try {
-    return new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(amount));
   } catch {
-    return `${currency} ${amount.toFixed(2)}`;
+    return `${currency} ${Math.round(amount).toLocaleString("en-US")}`;
   }
 }
 
-export function formatPrice(price: Price, locale?: string): string {
-  return formatCurrency(storePrice(price.price, price.currency), price.currency, locale);
+/**
+ * Format one of our prices. Amounts are whole numbers in the visitor's
+ * currency, so this never renders decimals.
+ */
+export function formatMoney(amount: number, currency: string, locale?: string): string {
+  return formatLocal(amount, currency, locale);
 }
 
 /**
- * The struck-through "was" price: the source listing, which is what our
- * discount is measured against.
+ * The price the shopper pays: 80% off the USD list price, converted to their
+ * currency and rounded to a whole amount.
  */
-export function formatListPrice(price: Price, locale?: string): string {
-  return formatCurrency(price.price, price.currency, locale);
+export function formatPrice(price: Price, locale?: string, currency?: string): string {
+  const code = currency ?? price.currency ?? "USD";
+  return formatLocal(storePrice(price.price, code), code, locale);
+}
+
+/**
+ * The struck-through "was" price: the source listing, converted to the
+ * visitor's currency. This is what our discount is measured against.
+ */
+export function formatListPrice(price: Price, locale?: string, currency?: string): string {
+  const code = currency ?? price.currency ?? "USD";
+  return formatLocal(storeListPrice(price.price, code), code, locale);
 }
 
 export function isOnSale(price: Price): boolean {

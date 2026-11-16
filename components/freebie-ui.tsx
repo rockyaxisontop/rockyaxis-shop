@@ -1,5 +1,7 @@
 import { Flame, Gift, Timer } from "lucide-react";
 
+import { convertFromUsd, formatLocal } from "@/lib/currency";
+import { STORE_DISCOUNT_PERCENT, storeListPrice, storePrice } from "@/lib/discount";
 import { cn } from "@/lib/utils";
 
 /** Milliseconds left before a campaign closes (0 when it already has). */
@@ -19,8 +21,17 @@ export function formatCountdown(expiresAt: string) {
   return `${Math.max(1, minutes)}m left`;
 }
 
+/** Format an amount already in `currency` (whole numbers, no decimals). */
 export function formatMoney(amount: number, currency: string) {
-  return new Intl.NumberFormat("en", { style: "currency", currency }).format(amount);
+  return formatLocal(amount, currency);
+}
+
+/**
+ * Campaign amounts are stored in USD. Convert to the visitor's currency and
+ * format in one step, so the number shown matches every other price on the site.
+ */
+export function formatCampaignMoney(amountUsd: number, currency: string) {
+  return formatLocal(convertFromUsd(amountUsd, currency), currency);
 }
 
 /** How much cash the owner is saving — the greedy hook. */
@@ -36,19 +47,44 @@ export function FreebiePrice({
   price,
   listPrice,
   currency,
+  cartPrice,
   className,
 }: {
+  /**
+   * Set when `price` is a raw USD cart/list amount that still needs our 80%
+   * discount applied (the /freebie page reads prices straight from the cart).
+   */
+  cartPrice?: boolean;
+  /**
+   * Our selling price. When `cartPrice` is set this is the raw USD list price
+   * instead, and the 80% discount is applied here.
+   */
   price: number;
+  /** Original source listing, same stored currency. */
   listPrice?: number;
+  /** Visitor's currency to display in. */
   currency: string;
   className?: string;
 }) {
+  // Cart rows hold USD list prices; campaign records already hold our price.
+  const sellingUsd = cartPrice ? storePrice(price) : price;
+  const originalUsd = cartPrice ? storeListPrice(price) : listPrice;
+
   return (
     <span className={cn("flex flex-wrap items-baseline gap-x-1.5", className)}>
-      {listPrice != null && listPrice > price ? (
-        <span className="text-[11px] text-ink-soft line-through">{formatMoney(listPrice, currency)}</span>
+      {originalUsd != null && originalUsd > sellingUsd ? (
+        <span className="text-[11px] text-ink-soft line-through">
+          {formatCampaignMoney(originalUsd, currency)}
+        </span>
       ) : null}
-      <span className="text-sm font-extrabold text-ink">{formatMoney(price, currency)}</span>
+      <span className="text-sm font-extrabold text-ink">
+        {formatCampaignMoney(sellingUsd, currency)}
+      </span>
+      {cartPrice ? (
+        <span className="rounded bg-save px-1 py-0.5 text-[9px] font-extrabold text-ink">
+          −{STORE_DISCOUNT_PERCENT}%
+        </span>
+      ) : null}
     </span>
   );
 }

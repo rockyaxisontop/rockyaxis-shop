@@ -19,6 +19,8 @@ export interface OffersListProps extends React.ComponentProps<"div"> {
   onOfferClick?: (offer: ProductOffer) => void;
   actionLabel?: string;
   locale?: string;
+  /** Visitor's currency; prices are converted into it. */
+  currency?: string;
   /** `rel` for each buy link. Use `"sponsored noopener noreferrer"` for affiliate links. */
   buyLinkRel?: string;
 }
@@ -30,6 +32,7 @@ export function OffersList({
   onOfferClick,
   actionLabel = "View",
   locale,
+  currency,
   buyLinkRel = "noopener noreferrer",
   className,
   ...props
@@ -60,6 +63,7 @@ export function OffersList({
       dimmed={dimmed}
       actionLabel={actionLabel}
       locale={locale}
+      currency={currency}
       buyLinkRel={buyLinkRel}
       onOfferClick={onOfferClick}
     />
@@ -84,6 +88,7 @@ function OfferRow({
   dimmed,
   actionLabel,
   locale,
+  currency,
   buyLinkRel,
   onOfferClick,
 }: {
@@ -92,6 +97,7 @@ function OfferRow({
   dimmed: boolean;
   actionLabel: string;
   locale: string | undefined;
+  currency: string | undefined;
   buyLinkRel: string;
   onOfferClick: ((offer: ProductOffer) => void) | undefined;
 }) {
@@ -110,9 +116,9 @@ function OfferRow({
       <div className="flex items-center gap-3">
         <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1">
           <span className="text-xs text-muted-foreground line-through">
-            {formatListPrice(offer.price, locale)}
+            {formatListPrice(offer.price, locale, currency)}
           </span>
-          <span className="text-sm font-semibold">{formatPrice(offer.price, locale)}</span>
+          <span className="text-sm font-semibold">{formatPrice(offer.price, locale, currency)}</span>
           {discountPercent(offer.price) > 0 ? (
             <span className="rounded-full bg-stock-bg px-2 py-0.5 text-[10px] font-bold text-stock">
               Save {discountPercent(offer.price)}%

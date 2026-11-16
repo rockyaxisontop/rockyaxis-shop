@@ -5,8 +5,9 @@ import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
 import { ProductRecommendationsView, ProductView } from "@/components/product-view";
 import { getProduct } from "@/lib/channel3/products";
-import { storePrice } from "@/lib/discount";
-import { discountPercent } from "@/lib/format";
+import { getCurrencyContext } from "@/lib/currency/server";
+import { storeListPrice, storePrice } from "@/lib/discount";
+import { discountPercent, formatMoney } from "@/lib/format";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -45,6 +46,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  const { currency } = await getCurrencyContext();
   const offers = product.offers ?? [];
   const lowestOffer = offers.reduce<(typeof offers)[number] | undefined>(
     (best, offer) =>
@@ -70,7 +72,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
 
       <div className="grid items-start gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-white p-3 shadow-sm sm:p-4">
-          <ProductView product={product} />
+          <ProductView product={product} currency={currency} />
         </div>
 
         <aside className="min-w-0 lg:sticky lg:top-20 lg:h-fit">
@@ -88,13 +90,10 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
               <div className="rounded-xl bg-surface-2 p-4">
                 <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                   <p className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
-                    {formatMoney(
-                      storePrice(lowestOffer.price.price, lowestOffer.price.currency ?? "USD"),
-                      lowestOffer.price.currency ?? "USD",
-                    )}
+                    {formatMoney(storePrice(lowestOffer.price.price, currency), currency)}
                   </p>
                   <p className="text-sm text-ink-soft line-through">
-                    {formatMoney(lowestOffer.price.price, lowestOffer.price.currency ?? "USD")}
+                    {formatMoney(storeListPrice(lowestOffer.price.price, currency), currency)}
                   </p>
                   <span className="rounded-full bg-stock-bg px-2 py-1 text-[11px] font-bold text-stock">
                     Save {discountPercent(lowestOffer.price)}%
@@ -129,10 +128,4 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
   );
 }
 
-function formatMoney(amount: number, currency: string) {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
+

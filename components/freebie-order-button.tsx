@@ -34,7 +34,7 @@ export function FreebieOrderButton({ campaign }: { campaign: PublicCampaign }) {
         className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-stock px-4 text-sm font-extrabold text-white shadow-[0_8px_20px_rgba(4,120,87,0.3)] transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <PartyPopper className="size-4" />}
-        {busy ? "Placing your free order…" : "Order Now — ₨0"}
+        {busy ? "Placing your free order…" : "Order Now — FREE"}
       </button>
       {error ? <p className="mt-1.5 text-[11px] text-destructive">{error}</p> : null}
     </div>

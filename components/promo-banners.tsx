@@ -11,7 +11,7 @@ export function PromoBanners() {
         href="/search"
         className="group relative flex min-h-56 items-center justify-between gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[#8f1d24] via-[#df3c2f] to-[#f47535] p-5 text-white shadow-sm transition hover:shadow-lg sm:min-h-64 sm:p-8"
       >
-        <div className="relative z-10 max-w-md">
+        <div className="relative z-10 max-w-md sm:max-w-[calc(100%-9rem)]">
           <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
             <Sparkles className="size-3.5" />
             Big Billion Days
@@ -28,7 +28,8 @@ export function PromoBanners() {
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </span>
         </div>
-        <span className="pointer-events-none absolute right-5 grid size-24 shrink-0 rotate-6 place-items-center rounded-full border-2 border-dashed border-[#ffd766] text-center text-xs leading-tight font-extrabold text-[#ffd766] sm:right-10 sm:size-36 sm:text-base">
+        {/* Decorative stamp: hidden on phones where it would sit on the headline. */}
+        <span className="pointer-events-none absolute top-6 right-6 hidden size-28 shrink-0 rotate-6 place-items-center rounded-full border-2 border-dashed border-[#ffd766] text-center text-xs leading-tight font-extrabold text-[#ffd766] sm:grid md:top-auto md:right-10 md:size-36 md:text-base">
           ALL
           <br />
           PRODUCTS

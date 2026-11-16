@@ -11,7 +11,7 @@ import { fetchSimilarProducts, resolveVariant } from "@/lib/channel3/client-prod
  * Official Channel3 `product-details` block with live variant resolution.
  * All fetches go through /api/channel3/* so the API key stays server-side.
  */
-export function ProductView({ product }: { product: Product }) {
+export function ProductView({ product, currency }: { product: Product; currency?: string }) {
   const { product: activeProduct, selection, isResolving, select } = useVariantSelection({
     product,
     resolve: resolveVariant,
@@ -24,6 +24,7 @@ export function ProductView({ product }: { product: Product }) {
   return (
     <ProductDetails
       product={activeProduct}
+      currency={currency}
       selection={selection}
       isResolving={isResolving}
       onSelectVariant={handleSelectVariant}

@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { addToCart } from "@/lib/firebase/cart";
 import { freebieApi } from "@/lib/freebies/client";
@@ -30,7 +31,7 @@ import {
   FreebieSegments,
   FreebieSocialProof,
   FreebieStatusPill,
-  formatMoney,
+  formatCampaignMoney,
   spotsLeft,
 } from "@/components/freebie-ui";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ import { cn } from "@/lib/utils";
 /** Landing page for an invited user: shows progress and counts their referral. */
 export function FreebieClaim({ code }: { code: string }) {
   const { user, loading } = useAuth();
+  const { currency } = useCurrency();
   const pathname = usePathname();
   const router = useRouter();
   const [campaign, setCampaign] = useState<PublicCampaign | null>(null);
@@ -89,12 +91,15 @@ export function FreebieClaim({ code }: { code: string }) {
       const { campaign: mine } = await freebieApi.startFromCode(code);
 
       // Put the product in their cart so it's waiting for them at checkout.
+      // Cart prices are the ORIGINAL USD list price: every cart screen applies
+      // the 80% discount once, so passing our discounted price here would
+      // discount it a second time.
       await addToCart(user.uid, {
         productId: campaign.product.productId,
         title: campaign.product.title,
         image: campaign.product.image,
         brand: campaign.product.brand,
-        price: campaign.product.price,
+        price: campaign.product.listPrice ?? campaign.product.price,
         currency: campaign.product.currency,
         url: campaign.product.url,
       }).catch(() => { });
@@ -135,9 +140,13 @@ export function FreebieClaim({ code }: { code: string }) {
   const done = campaign.status === "completed";
   const expired = campaign.status === "expired" || campaign.status === "cancelled";
   const remaining = spotsLeft(campaign.referralCount, campaign.target);
-  const price = formatMoney(campaign.product.price, campaign.product.currency);
+  // Campaign amounts are stored in USD; show them in the visitor's currency.
+  const price = formatCampaignMoney(campaign.product.price, currency);
   // What the shopper pays at MT Store today — that is what going free is worth.
   const saved = price;
+  const listPrice = campaign.product.listPrice
+    ? formatCampaignMoney(campaign.product.listPrice, currency)
+    : null;
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-3 py-3 sm:gap-4 sm:py-6">
@@ -201,7 +210,7 @@ export function FreebieClaim({ code }: { code: string }) {
               <img src={campaign.product.image} alt="" className="size-full object-cover" />
             ) : null}
             <span className="absolute top-1.5 left-1.5 rounded-md bg-[#ffdd48] px-1.5 py-0.5 text-[9px] font-extrabold text-[#7a4a00] shadow">
-              −100%
+              FREE
             </span>
           </div>
           <div className="min-w-0 flex-1">
@@ -220,15 +229,15 @@ export function FreebieClaim({ code }: { code: string }) {
               <FreebiePrice
                 price={campaign.product.price}
                 listPrice={campaign.product.listPrice}
-                currency={campaign.product.currency}
+                currency={currency}
               />
-              <span className="text-lg font-extrabold text-stock">₨0</span>
+              <span className="text-lg font-extrabold text-stock">FREE</span>
               <span className="rounded-full bg-stock-bg px-2 py-0.5 text-[10px] font-extrabold text-stock">
                 You save {saved}
               </span>
-              {campaign.product.discountPercent ? (
+              {listPrice ? (
                 <span className="rounded-full bg-save px-1.5 py-0.5 text-[10px] font-extrabold text-ink">
-                  −{campaign.product.discountPercent}% store price
+                  {campaign.product.discountPercent ?? 80}% off list
                 </span>
               ) : null}
             </div>

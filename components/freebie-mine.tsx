@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { FreebieOrderButton } from "@/components/freebie-order-button";
 import { freebieApi } from "@/lib/freebies/client";
@@ -29,7 +30,7 @@ import {
   FreebieSegments,
   FreebieSocialProof,
   FreebieStatusPill,
-  formatMoney,
+  formatCampaignMoney,
   spotsLeft,
 } from "@/components/freebie-ui";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ import { cn } from "@/lib/utils";
 /** The campaign owner's dashboard: progress, sharing actions, and store navigation. */
 export function FreebieMine({ campaignId }: { campaignId: string }) {
   const { user, loading } = useAuth();
+  const { currency } = useCurrency();
   const router = useRouter();
   const [campaign, setCampaign] = useState<PublicCampaign | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -121,7 +123,8 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
   const done = campaign.status === "completed";
   const expired = campaign.status === "expired" || campaign.status === "cancelled";
   const remaining = spotsLeft(campaign.referralCount, campaign.target);
-  const price = formatMoney(campaign.product.price, campaign.product.currency);
+  // Stored in USD; quoted in the visitor's currency.
+  const price = formatCampaignMoney(campaign.product.price, currency);
 
   async function copy() {
     if (!link) return;
@@ -145,7 +148,7 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
     try {
       await navigator.share({
         title: `Help unlock ${campaign.product.title}`,
-        text: getCampaignShareMessage(campaign),
+        text: getCampaignShareMessage(campaign, currency),
         url: link,
       });
     } catch (error) {
@@ -215,7 +218,7 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
         </h1>
         <p className="relative z-10 mt-1 text-xs leading-5 text-white/85 sm:text-sm">
           {done
-            ? "Place your ₨0 order below and it ships to you."
+            ? "Place your free order below and it ships to you."
             : expired
               ? "Start again for a fresh 7-day window and a new link."
               : `Worth ${price}. Every verified friend who taps your link brings you closer — no purchase needed.`}
@@ -254,9 +257,9 @@ export function FreebieMine({ campaignId }: { campaignId: string }) {
             <FreebiePrice
               price={campaign.product.price}
               listPrice={campaign.product.listPrice}
-              currency={campaign.product.currency}
+              currency={currency}
             />
-            <span className="text-sm font-extrabold text-stock">₨0</span>
+            <span className="text-sm font-extrabold text-stock">FREE</span>
           </div>
         </div>
         <Link

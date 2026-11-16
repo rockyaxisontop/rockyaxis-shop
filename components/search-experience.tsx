@@ -7,7 +7,8 @@ import type { Product } from "@channel3/sdk/resources";
 import { ProductSearch } from "@/components/product-search";
 import { Button } from "@/components/ui/button";
 import { fetchProductSearch, productSearchFetcher } from "@/lib/channel3/client-search";
-import { storePrice } from "@/lib/discount";
+import { useCurrency } from "@/components/currency-provider";
+import { storeListPrice, storePrice } from "@/lib/discount";
 
 /**
  * Official Channel3 `product-search` block – filters, image search and
@@ -33,6 +34,7 @@ export function SearchExperience({ initialQuery = "" }: { initialQuery?: string 
 
 /** Kept as a plain search box if you ever want to remove the Channel3 block. */
 export function FallbackSearch({ onSelect }: { onSelect: (product: Product) => void }) {
+  const { currency } = useCurrency();
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -107,11 +109,11 @@ export function FallbackSearch({ onSelect }: { onSelect: (product: Product) => v
                   {offer ? (
                     <>
                       <span className="font-bold text-ink">
-                        {formatPrice(storePrice(offer.price?.price ?? 0, offer.price?.currency), offer.price?.currency)}
+                        {formatPrice(storePrice(offer.price?.price ?? 0, currency), currency)}
                       </span>
                       {offer.price?.price != null ? (
                         <span className="text-[11px] line-through">
-                          {formatPrice(offer.price.price, offer.price.currency)}
+                          {formatPrice(storeListPrice(offer.price.price, currency), currency)}
                         </span>
                       ) : null}
                     </>
@@ -133,6 +135,7 @@ function formatPrice(amount?: number, currency?: string) {
   return new Intl.NumberFormat("en", {
     style: "currency",
     currency: currency ?? "USD",
-    maximumFractionDigits: 2,
-  }).format(amount);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(amount));
 }

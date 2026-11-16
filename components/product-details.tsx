@@ -34,6 +34,8 @@ interface ProductDetailsContextValue {
   priceHistory: PriceHistoryResponse | undefined;
   isResolving: boolean;
   locale: string | undefined;
+  /** Visitor's currency; prices are converted into it. */
+  currency: string | undefined;
   /** A hovered swatch's value, previewed in the gallery (no fetch). */
   variantPreview: OptionValue | null;
   setVariantPreview: (value: OptionValue | null) => void;
@@ -63,6 +65,8 @@ export interface ProductDetailsProps extends Omit<React.ComponentProps<"div">, "
   priceHistory?: PriceHistoryResponse;
   isResolving?: boolean;
   locale?: string;
+  /** Visitor's currency, e.g. "NPR". Defaults to USD. */
+  currency?: string;
   /**
    * Server-side fetcher wrapping `client.products.findSimilar`. When provided,
    * the default layout renders a lazy "you might also like" carousel below the
@@ -81,6 +85,7 @@ function Root({
   priceHistory,
   isResolving = false,
   locale,
+  currency,
   fetchSimilar,
   recommendations,
   children,
@@ -98,6 +103,7 @@ function Root({
       priceHistory,
       isResolving,
       locale,
+      currency,
       variantPreview,
       setVariantPreview,
       fetchSimilar,
@@ -112,6 +118,7 @@ function Root({
       priceHistory,
       isResolving,
       locale,
+      currency,
       variantPreview,
       fetchSimilar,
       recommendations,
@@ -140,7 +147,7 @@ function Gallery({ className, ...rest }: React.ComponentProps<"div">) {
 }
 
 function Header({ className, ...rest }: React.ComponentProps<"div">) {
-  const { product, locale } = useProductDetails("ProductDetailsHeader");
+  const { product, locale, currency } = useProductDetails("ProductDetailsHeader");
   const brands = (product.brands ?? []).map((brand) => brand.name).filter(Boolean);
   const offer = leadOffer(product.offers);
   const savings = offer ? discountPercent(offer.price) : 0;
@@ -153,9 +160,11 @@ function Header({ className, ...rest }: React.ComponentProps<"div">) {
       <h1 className="text-xl leading-tight font-bold tracking-tight text-ink sm:text-2xl">{product.title}</h1>
       {offer ? (
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 border-t border-border pt-4">
-          <span className="text-3xl font-extrabold tracking-tight text-ink">{formatPrice(offer.price, locale)}</span>
+          <span className="text-3xl font-extrabold tracking-tight text-ink">
+            {formatPrice(offer.price, locale, currency)}
+          </span>
           <span className="text-sm text-muted-foreground line-through">
-            {formatListPrice(offer.price, locale)}
+            {formatListPrice(offer.price, locale, currency)}
           </span>
           {savings > 0 ? (
             <span className="rounded-full bg-stock-bg px-2.5 py-1 text-xs font-bold text-stock">
@@ -192,7 +201,8 @@ function Variants({ className, ...rest }: React.ComponentProps<"div">) {
 }
 
 function Offers({ className, ...rest }: React.ComponentProps<"div">) {
-  const { product, onOfferClick, locale, buyLinkRel } = useProductDetails("ProductDetailsOffers");
+  const { product, onOfferClick, locale, currency, buyLinkRel } =
+    useProductDetails("ProductDetailsOffers");
   const offers = product.offers ?? [];
   if (offers.length === 0) {
     return null;
@@ -208,6 +218,7 @@ function Offers({ className, ...rest }: React.ComponentProps<"div">) {
         offers={offers}
         onOfferClick={onOfferClick}
         locale={locale}
+        currency={currency}
         buyLinkRel={buyLinkRel}
       />
     </div>

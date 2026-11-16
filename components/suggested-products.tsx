@@ -1,14 +1,18 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@channel3/sdk/resources";
 
 import type { SuggestedGroup } from "@/lib/channel3/products";
-import { storePrice } from "@/lib/discount";
-import { discountPercent, formatCurrency } from "@/lib/format";
+import { useCurrency } from "@/components/currency-provider";
+import { STORE_DISCOUNT_PERCENT, storeListPrice, storePrice } from "@/lib/discount";
+import { formatMoney } from "@/lib/format";
 
 /**
  * Daily-life suggestions shown before the user types anything.
- * Server-rendered from `getSuggestedProducts` so it costs no client JS.
+ * Built from server-fetched `getSuggestedProducts` data; the client boundary is
+ * only for reading the visitor's currency from context.
  */
 export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
   if (groups.length === 0) return null;
@@ -31,6 +35,7 @@ export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
 }
 
 function ProductTile({ product }: { product: Product }) {
+  const { currency } = useCurrency();
   const offers = product.offers ?? [];
   const cheapest = offers.reduce<(typeof offers)[number] | undefined>(
     (best, offer) =>
@@ -39,7 +44,7 @@ function ProductTile({ product }: { product: Product }) {
         : best,
     undefined,
   );
-  const savings = cheapest ? discountPercent(cheapest.price) : 0;
+  const savings = cheapest && (cheapest.price?.price ?? 0) > 0 ? STORE_DISCOUNT_PERCENT : 0;
 
   return (
     <Link
@@ -56,7 +61,7 @@ function ProductTile({ product }: { product: Product }) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : null}
-        {savings !== null && savings > 0 ? (
+        {savings > 0 ? (
           <span className="absolute left-2 top-2 rounded-full bg-save px-2 py-1 text-[10px] font-extrabold text-ink">
             {savings}% off
           </span>
@@ -70,12 +75,12 @@ function ProductTile({ product }: { product: Product }) {
         ) : null}
         {cheapest?.price?.price != null ? (
           <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-1">
-            <p className="text-sm font-bold text-ink">
-              {formatCurrency(storePrice(cheapest.price.price, cheapest.price.currency ?? "USD"), cheapest.price.currency ?? "USD")}
-            </p>
-            <p className="text-xs text-ink-soft line-through">
-              {formatCurrency(cheapest.price.price, cheapest.price.currency ?? "USD")}
-            </p>
+            <span className="text-sm font-bold text-ink">
+              {formatMoney(storePrice(cheapest.price.price, currency), currency)}
+            </span>
+            <span className="text-xs text-ink-soft line-through">
+              {formatMoney(storeListPrice(cheapest.price.price, currency), currency)}
+            </span>
           </div>
         ) : (
           <p className="mt-auto pt-1 text-sm font-semibold">—</p>

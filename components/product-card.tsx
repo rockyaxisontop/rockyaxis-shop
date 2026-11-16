@@ -7,6 +7,7 @@ import { ImageOff } from "lucide-react";
 import type { OptionValue, Product } from "@channel3/sdk/resources";
 
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/currency-provider";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -63,6 +64,7 @@ export function ProductCard({
   ...props
 }: ProductCardProps) {
   const router = useRouter();
+  const { currency } = useCurrency();
   const [imageFailed, setImageFailed] = React.useState(false);
   const [imageLoaded, setImageLoaded] = React.useState(false);
   const [useRaw, setUseRaw] = React.useState(false);
@@ -238,10 +240,10 @@ export function ProductCard({
         {offer ? (
           <>
             <span className="text-[13px] font-bold text-ink sm:text-[15px]">
-              {formatPrice(offer.price, locale)}
+              {formatPrice(offer.price, locale, currency)}
             </span>
             <span className="text-[11px] text-ink-soft line-through sm:text-xs">
-              {formatListPrice(offer.price, locale)}
+              {formatListPrice(offer.price, locale, currency)}
             </span>
           </>
         ) : null}

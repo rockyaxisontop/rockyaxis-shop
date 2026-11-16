@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { useCurrency } from "@/components/currency-provider";
 import { useAuth } from "@/components/providers";
 import { useFreebieCampaigns } from "@/components/freebie-panel";
 import { FreebieOrderButton } from "@/components/freebie-order-button";
@@ -30,6 +31,7 @@ import {
   spotsLeft,
 } from "@/components/freebie-ui";
 import { Skeleton } from "@/components/ui/skeleton";
+import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice } from "@/lib/discount";
 import { subscribeCart, type CartItem } from "@/lib/firebase/cart";
 import { freebieApi } from "@/lib/freebies/client";
 import type { PublicCampaign } from "@/lib/freebies/types";
@@ -38,6 +40,7 @@ import { cn } from "@/lib/utils";
 /** Freebie-only campaign setup and progress; paid retailer links stay on /checkout. */
 export function FreebieCheckoutView() {
   const { user, loading } = useAuth();
+  const { currency } = useCurrency();
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartReady, setCartReady] = useState(false);
@@ -84,13 +87,27 @@ export function FreebieCheckoutView() {
     return <SignedOutHero />;
   }
 
-  const totalValue = items.reduce((sum, item) => sum + (item.price ?? 0), 0);
-  const currency = items[0]?.currency ?? "USD";
+  // Cart rows hold the USD list price; the hero quotes what the shopper would
+  // actually pay us for these items (80% off), in their own currency.
+  const totalValue = items.reduce(
+    (sum, item) => sum + storeLineTotal(item.price ?? 0, item.quantity ?? 1, currency),
+    0,
+  );
+  const listValue = items.reduce(
+    (sum, item) => sum + storeListPrice(item.price ?? 0, currency) * (item.quantity ?? 1),
+    0,
+  );
   const unlocked = items.filter((item) => campaigns[item.productId]?.status === "completed").length;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <FreebieHero totalValue={totalValue} currency={currency} unlocked={unlocked} count={items.length} />
+      <FreebieHero
+        totalValue={totalValue}
+        listValue={listValue}
+        currency={currency}
+        unlocked={unlocked}
+        count={items.length}
+      />
 
       {error ? (
         <p
@@ -125,11 +142,13 @@ export function FreebieCheckoutView() {
 /** Above-the-fold pitch: shows the money at stake and the 3 steps in one glance. */
 function FreebieHero({
   totalValue,
+  listValue,
   currency,
   unlocked,
   count,
 }: {
   totalValue: number;
+  listValue: number;
   currency: string;
   unlocked: number;
   count: number;
@@ -154,9 +173,20 @@ function FreebieHero({
           {hasItems ? (
             <p className="mt-1 text-xs leading-5 text-white/80 sm:text-sm">
               You&apos;re about to save{" "}
-              <span className="font-extrabold text-white">{formatMoney(totalValue, currency)}</span>. Invite{" "}
-              <span className="font-extrabold text-white">15 verified friends</span> in 7 days — no purchase
-              needed.
+              <span className="font-extrabold text-white">{formatMoney(totalValue, currency)}</span>
+              {listValue > totalValue ? (
+                <>
+                  {" "}
+                  <span className="text-white/60 line-through">
+                    {formatMoney(listValue, currency)}
+                  </span>{" "}
+                  <span className="rounded bg-[#ffdd48] px-1 py-0.5 text-[10px] font-extrabold text-[#7a4a00]">
+                    {STORE_DISCOUNT_PERCENT}% OFF
+                  </span>
+                </>
+              ) : null}
+              . Invite <span className="font-extrabold text-white">15 verified friends</span> in 7 days —
+              no purchase needed.
             </p>
           ) : (
             <p className="mt-1 text-xs leading-5 text-white/80 sm:text-sm">
@@ -299,6 +329,7 @@ function FreebieItem({
   busy: boolean;
   onStart: () => void;
 }) {
+  const { currency } = useCurrency();
   const active = campaign?.status === "active";
   const done = campaign?.status === "completed";
   const percent = campaign ? campaignPercent(campaign.referralCount, campaign.target) : 0;
@@ -335,8 +366,8 @@ function FreebieItem({
             </p>
           ) : null}
           <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
-            <FreebiePrice price={item.price} currency={item.currency} />
-            <span className="text-sm font-extrabold text-stock">₨0</span>
+            <FreebiePrice price={item.price} currency={currency} cartPrice />
+            <span className="text-sm font-extrabold text-stock">FREE</span>
           </div>
         </div>
       </div>
