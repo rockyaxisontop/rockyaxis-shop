@@ -121,6 +121,13 @@ export function ProfilePage() {
         { merge: true },
       );
       setNotice("Your delivery and profile information has been saved.");
+
+      // Sent here to finish a delivery detail? Take them straight back.
+      const next = new URLSearchParams(window.location.search).get("next");
+      if (next && next.startsWith("/")) {
+        router.push(next);
+        return;
+      }
     } catch (cause) {
       setError(authErrorMessage(cause));
     } finally {
