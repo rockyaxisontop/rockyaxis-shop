@@ -8,6 +8,8 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { FloatingOrderContact } from "@/components/floating-order-contact";
 import { SiteStructuredData } from "@/components/structured-data";
+import { InstallPrompt } from "@/components/install-prompt";
+import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
 import { SITE_DESCRIPTION, SITE_LOCALE, SITE_NAME, SITE_URL } from "@/lib/site";
 
 import "./globals.css";
@@ -61,6 +63,28 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false, address: false, email: false },
   category: "shopping",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: ["/favicon.ico", "/favicon-32x32.png"],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: "default",
+  },
+  // Next emits the `appleWebApp` extras but not this legacy flag, which older
+  // iOS still needs for a full-screen home-screen launch.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 /**
@@ -70,7 +94,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1d7fa4",
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#1d7fa4" },
+    { media: "(prefers-color-scheme: dark)", color: "#011627" },
+  ],
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -102,6 +130,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </main>
             <SiteFooter />
             <FloatingOrderContact />
+            <InstallPrompt />
+            <ServiceWorkerRegistrar />
           </CurrencyProvider>
         </Providers>
       </body>
