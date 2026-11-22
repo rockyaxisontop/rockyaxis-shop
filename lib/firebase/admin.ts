@@ -6,7 +6,6 @@ import { join } from "node:path";
 
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
 import { NextResponse } from "next/server";
 
 import { verifyFirebaseIdToken } from "./verify-token";
@@ -131,10 +130,12 @@ export function getAdminDb() {
 /**
  * Default Storage bucket for the project.
  *
- * The bucket name comes from the service account's project id, which is why it
- * doesn't need a separate env var.
+ * `firebase-admin/storage` needs @google-cloud/storage, which is an optional
+ * peer dependency. It is imported lazily so a missing package can only break
+ * uploads — never the messaging routes that merely import this module.
  */
-export function getAdminBucket() {
+export async function getAdminBucket() {
+  const { getStorage } = await import("firebase-admin/storage");
   return getStorage(getAdminApp()).bucket();
 }
 

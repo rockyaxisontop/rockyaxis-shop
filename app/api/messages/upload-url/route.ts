@@ -45,7 +45,11 @@ export async function POST(request: Request) {
       throw new ApiError("Files must be smaller than 25 MB.", 400);
     }
 
-    const bucket = getAdminBucket();
+    // Storage is optional: if the bucket isn't configured, say so instead of
+    // failing with a stack trace.
+    const bucket = await getAdminBucket().catch(() => {
+      throw new ApiError("File uploads aren't available right now.", 503);
+    });
     const path = `message-attachments/${user.uid}/${Date.now()}-${name}`;
     const [url] = await bucket.file(path).getSignedUrl({
       version: "v4",

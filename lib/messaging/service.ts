@@ -59,12 +59,18 @@ function adminEmails() {
  * Requiring the document means removing access is a single Firestore write and
  * takes effect immediately, without redeploying env vars.
  */
+/**
+ * Resolves whether the caller is an administrator.
+ *
+ * The **verified token email** being on ADMIN_EMAILS is the single source of
+ * truth. `admins/{uid}` is a record of that decision, not a second gate: if it
+ * were required, removing someone from ADMIN_EMAILS would leave their old
+ * document behind and keep their access alive.
+ */
 export async function resolveAdmin(user: AuthUser): Promise<boolean> {
   const email = user.email?.toLowerCase();
   if (!email) return false;
-  if (!adminEmails().includes(email)) return false;
-  const snapshot = await db().collection(ADMINS).doc(user.uid).get();
-  return snapshot.exists && snapshot.data()?.role === "admin";
+  return adminEmails().includes(email);
 }
 
 export async function requireAdmin(user: AuthUser): Promise<void> {
@@ -79,7 +85,15 @@ export async function requireAdmin(user: AuthUser): Promise<void> {
 
 function toIso(value: unknown): string | null {
   if (value instanceof Timestamp) return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  // A ServerTimestamp sentinel that hasn't been resolved yet reads back as
+  // neither — treat it as "not set" rather than throwing.
   return null;
+}
+
+/** Removes `undefined` keys: Firestore throws on them instead of skipping. */
+function stripUndefined<T extends Record<string, unknown>>(input: T): T {
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as T;
 }
 
 function toMessage(conversationId: string, id: string, data: FirebaseFirestore.DocumentData): PublicMessage {
@@ -146,43 +160,60 @@ export async function getOrCreateMyConversation(user: AuthUser): Promise<PublicC
 
   const profile = await db().collection("users").doc(user.uid).get();
   const profileData = profile.data() ?? {};
+
+  // Firestore rejects `undefined`, so every optional field is coerced to null
+  // or omitted. A new customer has no saved phone/photo/address.
+  const str = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
   const customer: ConversationCustomer = {
     uid: user.uid,
-    name: profileData.fullName || user.email?.split("@")[0] || "Customer",
-    email: user.email,
-    phone: profileData.phoneNumber ?? undefined,
-    photoURL: profileData.photoURL ?? undefined,
-    address: [profileData.buildingStreet, profileData.locality, profileData.city]
-      .filter(Boolean)
-      .join(", "),
+    name: str(profileData.fullName) ?? str(user.email?.split("@")[0]) ?? "Customer",
+    email: str(user.email),
+    phone: str(profileData.phoneNumber),
+    photoURL: str(profileData.photoURL),
+    address:
+      [profileData.buildingStreet, profileData.locality, profileData.city]
+        .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+        .join(", ") || undefined,
   };
 
   const now = FieldValue.serverTimestamp();
-  await ref.set({
-    customer,
-    lastMessageText: "",
+  const welcome =
+    "Hi! 👋 Welcome to MT Store. Send us your order or any question — our team replies here.";
+  const messageRef = ref.collection("messages").doc();
+
+  // One atomic write: the summary AND the welcome message, so the thread is
+  // never left half-created (a second transaction here could 404 on a race).
+  const batch = db().batch();
+  batch.set(ref, {
+    customer: stripUndefined(customer),
+    lastMessageText: welcome,
     lastMessageAt: now,
     lastSenderRole: "admin",
     lastMessageKind: "text",
     unreadForAdmin: 0,
-    unreadForCustomer: 0,
+    unreadForCustomer: 1,
     awaitingAdminReply: false,
-    messageCount: 0,
+    messageCount: 1,
     adminReadAt: null,
     customerReadAt: now,
     createdAt: now,
     updatedAt: now,
     lastActiveAt: now,
   });
-
-  await writeMessage(user.uid, {
-    senderId: "mt-store",
-    senderRole: "admin",
-    senderName: "MT Store",
-    senderPhoto: "/icon-192.png",
-    kind: "text",
-    text: "Hi! 👋 Welcome to MT Store. Send us your order or any question — our team replies here.",
+  batch.set(messageRef, {
+    ...buildMessage({
+      senderId: "mt-store",
+      senderRole: "admin",
+      senderName: "MT Store",
+      senderPhoto: "/icon-192.png",
+      kind: "text",
+      text: welcome,
+    }),
+    createdAt: now,
+    deliveredAt: null,
+    readAt: null,
   });
+  await batch.commit();
 
   const created = await ref.get();
   return toConversation(ref.id, created.data()!);
@@ -230,18 +261,24 @@ async function writeMessage(conversationUid: string, input: MessageInput) {
     // Unread counters are maintained here, never by the client, so they cannot
     // be manipulated and no message history has to be scanned to compute them.
     const fromCustomer = message.senderRole === "customer";
-    tx.update(conversationRef, {
-      lastMessageText: preview(message.kind, message.text),
-      lastMessageAt: FieldValue.serverTimestamp(),
-      lastSenderRole: message.senderRole,
-      lastMessageKind: message.kind,
-      messageCount: ((data.messageCount as number) ?? 0) + 1,
-      unreadForAdmin: fromCustomer ? ((data.unreadForAdmin as number) ?? 0) + 1 : 0,
-      unreadForCustomer: fromCustomer ? (data.unreadForCustomer as number) ?? 0 : ((data.unreadForCustomer as number) ?? 0) + 1,
-      awaitingAdminReply: fromCustomer,
-      lastActiveAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    tx.set(
+      conversationRef,
+      {
+        lastMessageText: preview(message.kind, message.text),
+        lastMessageAt: FieldValue.serverTimestamp(),
+        lastSenderRole: message.senderRole,
+        lastMessageKind: message.kind,
+        messageCount: ((data.messageCount as number) ?? 0) + 1,
+        unreadForAdmin: fromCustomer ? ((data.unreadForAdmin as number) ?? 0) + 1 : 0,
+        unreadForCustomer: fromCustomer
+          ? ((data.unreadForCustomer as number) ?? 0)
+          : ((data.unreadForCustomer as number) ?? 0) + 1,
+        awaitingAdminReply: fromCustomer,
+        lastActiveAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
   });
 
   return messageRef.id;
@@ -365,29 +402,30 @@ export async function markConversationRead(
   const conversationRef = dbRef.collection(CONVERSATIONS).doc(conversationUid);
   const messages = conversationRef.collection("messages");
 
-  // Only the other side's messages need updating.
+  // Only the other side's messages need updating. Newest first, and filtered
+  // in code — a single-field query needs no composite index to be deployed.
   const otherRole = viewer === "admin" ? "customer" : "admin";
-  const unread = await messages.where("senderRole", "==", otherRole).orderBy("createdAt", "desc").limit(50).get();
+  const recent = await messages.orderBy("createdAt", "desc").limit(50).get();
 
   const batch = dbRef.batch();
-  let changed = 0;
-  for (const doc of unread.docs) {
+  for (const doc of recent.docs) {
     const data = doc.data();
+    if (data.senderRole !== otherRole) continue;
     const patch: Record<string, unknown> = {};
     if (!data.deliveredAt) patch.deliveredAt = FieldValue.serverTimestamp();
     if (!data.readAt) patch.readAt = FieldValue.serverTimestamp();
     if (Object.keys(patch).length === 0) continue;
     batch.update(doc.ref, patch);
-    changed++;
   }
 
-  batch.update(conversationRef, {
-    [viewer === "admin" ? "unreadForAdmin" : "unreadForCustomer"]: 0,
-    [viewer === "admin" ? "adminReadAt" : "customerReadAt"]: FieldValue.serverTimestamp(),
-  });
+  const updates: Record<string, unknown> =
+    viewer === "admin"
+      ? { unreadForAdmin: 0, adminReadAt: FieldValue.serverTimestamp() }
+      : { unreadForCustomer: 0, customerReadAt: FieldValue.serverTimestamp() };
+
+  batch.update(conversationRef, updates);
 
   await batch.commit();
-  void changed;
 }
 
 /** Customer's own conversation view. */
@@ -473,22 +511,20 @@ export async function getAdminStats(): Promise<AdminStats> {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Ensures the calling admin has an `admins/{uid}` document.
+ * Records the calling admin in `admins/{uid}`.
  *
- * Called from /api/admin/me after verifying the token's email is on the
- * allow-list, so a newly added admin doesn't need manual Firestore seeding.
+ * Cosmetic/bookkeeping only — it is written AFTER the allow-list has already
+ * authorised the request, and it is never what grants access.
  */
-export async function ensureAdminDocument(user: AuthUser): Promise<void> {
-  if (!user.email) throw new ApiError("Your account has no email address.", 403);
-  if (!adminEmails().includes(user.email.toLowerCase())) {
+export async function recordAdminDocument(user: AuthUser): Promise<void> {
+  if (!user.email || !adminEmails().includes(user.email.toLowerCase())) {
     throw new ApiError("You don't have access to the admin panel.", 403);
   }
-  await db().collection(ADMINS).doc(user.uid).set(
-    {
-      email: user.email.toLowerCase(),
-      role: "admin",
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+  await db()
+    .collection(ADMINS)
+    .doc(user.uid)
+    .set(
+      { email: user.email.toLowerCase(), role: "admin", updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
 }

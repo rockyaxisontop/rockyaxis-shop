@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { apiErrorResponse, requireUser } from "@/lib/firebase/admin";
-import { ensureAdminDocument, resolveAdmin } from "@/lib/messaging/service";
+import { recordAdminDocument, resolveAdmin } from "@/lib/messaging/service";
 
 export const dynamic = "force-dynamic";
 
@@ -11,25 +11,25 @@ export const dynamic = "force-dynamic";
  * The single gate for the admin panel. The client calls this on mount and only
  * renders the dashboard when it returns 200 — the URL alone grants nothing.
  *
- * On success it also ensures the `admins/{uid}` document exists, so adding an
- * admin only means setting ADMIN_EMAILS.
+ * Authorisation is the verified token email against ADMIN_EMAILS. If that fails
+ * we return 403 immediately and write nothing.
  */
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
 
     if (!(await resolveAdmin(user))) {
-      // Allow first-time admins to self-provision their allow-list document,
-      // but only if their verified email is on ADMIN_EMAILS.
-      await ensureAdminDocument(user);
+      return NextResponse.json(
+        { error: "You don't have access to the admin panel." },
+        { status: 403 },
+      );
     }
 
+    // Authorised — keep the audit record in sync (best effort, never blocking).
+    await recordAdminDocument(user).catch(() => {});
+
     return NextResponse.json({
-      admin: {
-        uid: user.uid,
-        email: user.email,
-        role: "admin",
-      },
+      admin: { uid: user.uid, email: user.email, role: "admin" },
     });
   } catch (error) {
     return apiErrorResponse(error);
