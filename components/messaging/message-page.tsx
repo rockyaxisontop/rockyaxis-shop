@@ -16,6 +16,7 @@ import { MessageComposer } from "@/components/messaging/composer";
 import { MtStoreAvatar } from "@/components/messaging/mt-store-avatar";
 import { messageApi } from "@/lib/messaging/client";
 import { InstallAppBanner } from "@/components/messaging/install-app-banner";
+import { useCartOrderState, CartOrderSummary } from "@/components/messaging/cart-order-status";
 import type { PublicMessage } from "@/lib/messaging/types";
 import { askForPushOnce } from "@/lib/messaging/push-client";
 import type { PublicConversation } from "@/lib/messaging/types";
@@ -36,6 +37,8 @@ export function MessagePage() {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const orderSent = useRef(false);
+  // Live status of every order this customer has sent, shown on the cards.
+  const { orders } = useCartOrderState();
 
   const { messages, loading: messagesLoading, hasMore, loadOlder, merge, sendOptimistic, dropOptimistic } = useLiveMessages({
     conversationUid: user?.uid ?? null,
@@ -197,6 +200,13 @@ export function MessagePage() {
         </Link>
       </header>
 
+      {/* Paid vs. remaining, so the customer never has to scroll to find out. */}
+      {orders.length > 0 ? (
+        <div className="border-b border-border bg-white px-2 py-1.5">
+          <CartOrderSummary orders={orders} />
+        </div>
+      ) : null}
+
       {/* Messages */}
       <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-3">
         {hasMore ? (
@@ -234,6 +244,11 @@ export function MessagePage() {
                 viewer="customer"
                 showAvatar={showAvatar}
                 onReply={setReplyTo}
+                orderStatus={
+                  message.order
+                    ? orders.find((order) => order.reference === message.order!.reference)?.status
+                    : undefined
+                }
               />
             </div>
           );

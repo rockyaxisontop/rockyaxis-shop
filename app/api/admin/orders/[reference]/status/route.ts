@@ -27,7 +27,29 @@ export async function POST(
     const status = body.status && STATUSES.includes(body.status) ? body.status : null;
     if (!status) throw new ApiError("A valid status is required.", 400);
 
-    return NextResponse.json({ order: await setOrderStatus("admin", reference, status, user) });
+    const order = await setOrderStatus("admin", reference, status, user);
+
+    // Tell the customer their order moved on. Fire-and-forget: a push failure
+    // must never make the status change itself fail.
+    const notifyStatus = order.status;
+    if (
+      notifyStatus === "awaiting_payment" ||
+      notifyStatus === "confirmed" ||
+      notifyStatus === "cancelled"
+    ) {
+      const statusForPush: "awaiting_payment" | "confirmed" | "cancelled" = notifyStatus;
+      void import("@/lib/messaging/push")
+        .then(({ notifyCustomerOfOrderStatus }) =>
+          notifyCustomerOfOrderStatus({
+            customerUid: order.customerUid,
+            reference: order.reference,
+            status: statusForPush,
+          }),
+        )
+        .catch(() => {});
+    }
+
+    return NextResponse.json({ order });
   } catch (error) {
     return apiErrorResponse(error);
   }

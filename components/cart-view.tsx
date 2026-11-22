@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Gift, House, MapPin, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
+import { Gift, House, LockKeyhole, MapPin, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
 import {
@@ -208,34 +208,59 @@ export function CartView() {
                   </div>
 
                   <div className="flex shrink-0 flex-col items-end justify-between gap-2">
-                    <div className="flex items-center rounded-lg border border-border">
-                      <button
-                        type="button"
-                        aria-label="Decrease quantity"
-                        className="grid size-8 place-items-center text-ink-soft hover:bg-surface-2 hover:text-ink"
-                        onClick={() => void setCartQuantity(user.uid, id, item.quantity - 1)}
-                      >
-                        <Minus className="size-3.5" />
-                      </button>
-                      <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
-                      <button
-                        type="button"
-                        aria-label="Increase quantity"
-                        className="grid size-8 place-items-center text-ink-soft hover:bg-surface-2 hover:text-ink"
-                        onClick={() => void setCartQuantity(user.uid, id, item.quantity + 1)}
-                      >
-                        <Plus className="size-3.5" />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      aria-label="Remove item"
-                      className="flex min-h-8 items-center gap-1 p-1 text-[11px] text-ink-soft hover:text-destructive"
-                      onClick={() => void removeFromCart(user.uid, id)}
-                    >
-                      <Trash2 className="size-3.5" />
-                      <span className="max-sm:sr-only">Remove</span>
-                    </button>
+                    {(() => {
+                      // A row that is part of an order is locked: changing or
+                      // removing it would desync the order the admin is holding.
+                      const order = forLine(cartLineKey(item.productId, item.options));
+                      const locked = order?.status === "sent" || order?.status === "awaiting_payment" || order?.status === "confirmed";
+
+                      if (locked) {
+                        return (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2 py-1 text-[11px] font-bold text-ink-soft ring-1 ring-border">
+                              <LockKeyhole className="size-3" />
+                              Qty {item.quantity}
+                            </span>
+                            <span className="text-[10px] text-ink-soft">
+                              {order.status === "confirmed" ? "Purchased" : "Locked in order"}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          <div className="flex items-center rounded-lg border border-border">
+                            <button
+                              type="button"
+                              aria-label="Decrease quantity"
+                              className="grid size-8 place-items-center text-ink-soft hover:bg-surface-2 hover:text-ink"
+                              onClick={() => void setCartQuantity(user.uid, id, item.quantity - 1)}
+                            >
+                              <Minus className="size-3.5" />
+                            </button>
+                            <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
+                            <button
+                              type="button"
+                              aria-label="Increase quantity"
+                              className="grid size-8 place-items-center text-ink-soft hover:bg-surface-2 hover:text-ink"
+                              onClick={() => void setCartQuantity(user.uid, id, item.quantity + 1)}
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Remove item"
+                            className="flex min-h-8 items-center gap-1 p-1 text-[11px] text-ink-soft hover:text-destructive"
+                            onClick={() => void removeFromCart(user.uid, id)}
+                          >
+                            <Trash2 className="size-3.5" />
+                            <span className="max-sm:sr-only">Remove</span>
+                          </button>
+                        </>
+                      );
+                    })()}
                   </div>
                 </li>
               );

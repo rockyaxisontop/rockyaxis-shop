@@ -162,3 +162,43 @@ export function notifyCustomerOfAdminMessage(input: {
     },
   );
 }
+
+/** Wording customers see for each order state. */
+const ORDER_PUSH: Record<string, { title: string; body: string }> = {
+  awaiting_payment: {
+    title: "Order accepted — payment requested",
+    body: "MT Store accepted your order. Tap to open the chat and complete payment.",
+  },
+  confirmed: {
+    title: "Order success ✓",
+    body: "Your payment is confirmed and MT Store is preparing your order.",
+  },
+  cancelled: {
+    title: "Order cancelled",
+    body: "This order was cancelled. Tap to see the details in your chat.",
+  },
+};
+
+/**
+ * Tells the customer their order moved on (accepted, successful, cancelled).
+ *
+ * The tag is per order reference, so repeated status changes replace the older
+ * notification instead of stacking up in the tray.
+ */
+export async function notifyCustomerOfOrderStatus(input: {
+  customerUid: string;
+  reference: string;
+  status: "awaiting_payment" | "confirmed" | "cancelled";
+}): Promise<number> {
+  const wording = ORDER_PUSH[input.status];
+  if (!wording) return 0;
+  return sendPush(
+    { to: "customers", uids: [input.customerUid] },
+    {
+      title: wording.title,
+      body: `Order ${input.reference} · ${wording.body}`.slice(0, 160),
+      url: "/message",
+      tag: `order-${input.reference}`,
+    },
+  );
+}

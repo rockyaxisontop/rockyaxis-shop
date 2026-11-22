@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  Clock3,
   Headphones,
   Home,
   MessageCircle,
@@ -206,16 +207,64 @@ export function CheckoutView() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/message?order=auto&item=${encodeURIComponent(cartItemId(item))}`)}
-                    aria-label={`Order ${item.title} in chat`}
-                    className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:w-auto"
-                  >
-                    <MessageCircle className="size-4" />
-                    Buy this item
-                    <ArrowRight className="size-3.5" />
-                  </button>
+                  {/* The action reflects this row's order state:
+                      - confirmed  → locked "Order success" (can't order twice)
+                      - sent/awaiting payment → disabled "Order sent"
+                      - no order   → "Buy this item" */}
+                  {(() => {
+                    const order = forLine(cartLineKey(item.productId, item.options));
+                    if (order?.status === "confirmed") {
+                      return (
+                        <button
+                          type="button"
+                          disabled
+                          aria-label={`${item.title} already ordered successfully`}
+                          className="inline-flex h-11 w-full shrink-0 cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-stock-bg px-4 text-sm font-bold text-stock ring-1 ring-stock/40 sm:w-auto"
+                        >
+                          <CheckCircle2 className="size-4" />
+                          Order success
+                        </button>
+                      );
+                    }
+                    if (order?.status === "awaiting_payment" || order?.status === "sent") {
+                      return (
+                        <button
+                          type="button"
+                          disabled
+                          aria-label={`${item.title} order is being reviewed`}
+                          className="inline-flex h-11 w-full shrink-0 cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-2 px-4 text-sm font-bold text-ink-soft ring-1 ring-border sm:w-auto"
+                        >
+                          <Clock3 className="size-4" />
+                          Order sent
+                        </button>
+                      );
+                    }
+                    if (order?.status === "cancelled") {
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/message?order=auto&item=${encodeURIComponent(cartItemId(item))}`)}
+                          aria-label={`Order ${item.title} again in chat`}
+                          className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-brand bg-white px-4 text-sm font-bold text-brand transition hover:bg-brand-tint sm:w-auto"
+                        >
+                          <ArrowRight className="size-4" />
+                          Order again
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/message?order=auto&item=${encodeURIComponent(cartItemId(item))}`)}
+                        aria-label={`Order ${item.title} in chat`}
+                        className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:w-auto"
+                      >
+                        <MessageCircle className="size-4" />
+                        Buy this item
+                        <ArrowRight className="size-3.5" />
+                      </button>
+                    );
+                  })()}
                 </li>
               ))}
             </ul>

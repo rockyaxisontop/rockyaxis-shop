@@ -21,8 +21,9 @@ export function useCartOrderState() {
     try {
       const { orders: list } = await messageApi.orders();
       setOrders(list);
-    } catch {
+    } catch (error) {
       /* the cart must keep working even if this call fails */
+      console.error("[cart-order-state] refresh failed:", error);
     }
   }, []);
 
@@ -81,20 +82,48 @@ export function CartOrderStatus({
 export function CartOrderSummary({ orders }: { orders: ChatOrder[] }) {
   if (orders.length === 0) return null;
 
-  const confirmed = orders.filter((order) => order.status === "confirmed").length;
-  const allDone = confirmed === orders.length;
+  const confirmed = orders.filter((order) => order.status === "confirmed");
+  const pending = orders.filter((order) => order.status === "sent" || order.status === "awaiting_payment");
+  const cancelled = orders.filter((order) => order.status === "cancelled");
+  const allDone = pending.length === 0 && cancelled.length === 0 && confirmed.length > 0;
 
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold",
+        "rounded-xl border px-3 py-2.5 text-xs",
         allDone ? "border-stock/40 bg-stock-bg text-stock" : "border-[#f36d25]/30 bg-[#fff6ef] text-[#b34a12]",
       )}
     >
-      {allDone ? <CheckCircle2 className="size-4 shrink-0" /> : <Clock3 className="size-4 shrink-0" />}
-      {allDone
-        ? `All ${orders.length} order${orders.length === 1 ? "" : "s"} confirmed — we're preparing them.`
-        : `${confirmed} of ${orders.length} order${orders.length === 1 ? "" : "s"} confirmed. The rest are being reviewed in your chat.`}
+      <p className="flex items-center gap-2 font-bold">
+        {allDone ? <CheckCircle2 className="size-4 shrink-0" /> : <Clock3 className="size-4 shrink-0" />}
+        {allDone
+          ? `All ${confirmed.length} order${confirmed.length === 1 ? "" : "s"} confirmed — we're preparing them.`
+          : `${confirmed.length} of ${orders.length} order${orders.length === 1 ? "" : "s"} confirmed.`}
+      </p>
+
+      {/* Which ones are paid, which are still being reviewed, which failed. */}
+      {!allDone ? (
+        <ul className="mt-1.5 space-y-0.5 text-[11px]">
+          {confirmed.length > 0 ? (
+            <li className="flex items-center gap-1.5">
+              <CheckCircle2 className="size-3 shrink-0" />
+              Paid: {confirmed.map((order) => order.reference).join(", ")}
+            </li>
+          ) : null}
+          {pending.length > 0 ? (
+            <li className="flex items-center gap-1.5">
+              <Clock3 className="size-3 shrink-0" />
+              Waiting in chat: {pending.map((order) => order.reference).join(", ")}
+            </li>
+          ) : null}
+          {cancelled.length > 0 ? (
+            <li className="flex items-center gap-1.5">
+              <Clock3 className="size-3 shrink-0" />
+              Cancelled: {cancelled.map((order) => order.reference).join(", ")}
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
     </div>
   );
 }
