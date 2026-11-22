@@ -106,7 +106,7 @@ function readServiceAccount(): ServiceAccount {
   return { projectId, clientEmail, privateKey: normalizeKey(value) };
 }
 
-function getAdminApp() {
+export function getAdminApp() {
   const existing = getApps().find((app) => app.name === "mt-shop-admin");
   if (existing) return existing;
 

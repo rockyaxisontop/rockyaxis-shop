@@ -13,7 +13,32 @@ service cloud.firestore {
 
     // users/{uid} – profile snapshot written right after sign-up.
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+
+      // A user may save their own profile EXCEPT for the fields that decide
+      // access. `role` and `disabled` can only be changed by the server (Admin
+      // SDK), otherwise anyone could make themselves an administrator by
+      // writing {"role": "admin"} with the Firestore REST API.
+      allow update: if isOwner(uid)
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['role', 'disabled']);
+
+      allow create: if isOwner(uid)
+                    && request.resource.data.get('role', 'user') != 'admin'
+                    && !request.resource.data.keys().hasAny(['disabled']);
+
+      allow delete: if isOwner(uid);
+
+      // Push registration tokens live here for admins.
+      match /deviceTokens/{token} {
+        allow read, write: if false;
+      }
+    }
+
+    // admins/{uid} – legacy allow-list. Kept closed; the admin role now lives on
+    // users/{uid}.role, which only the server can set.
+    match /admins/{uid} {
+      allow read, write: if false;
     }
 
     // carts/{uid}/items/{itemId} – live cart, private per user.
@@ -52,21 +77,17 @@ service cloud.firestore {
     //
     // All access goes through /api/messages/* and /api/admin/* using the Admin
     // SDK. Clients are denied outright so nobody can read another customer's
-    // messages, forge read receipts, clear their unread count, or grant
-    // themselves the admin role by writing to /admins.
+    // messages, forge read receipts or clear their own unread count.
     // ---------------------------------------------------------------------
     match /conversations/{conversationId} {
       allow read, write: if false;
       match /messages/{messageId} {
         allow read, write: if false;
       }
-    }
-
-    match /admins/{uid} {
-      // Admins may read their own role document; nobody may write it from the
-      // client. Roles are granted server-side from the ADMIN_EMAILS allow-list.
-      allow read: if isOwner(uid);
-      allow write: if false;
+      // Push tokens; registered through our API only.
+      match /deviceTokens/{token} {
+        allow read, write: if false;
+      }
     }
   }
 }

@@ -14,6 +14,7 @@ import {
   useLiveMessages,
 } from "@/components/messaging/chat-parts";
 import { messageApi } from "@/lib/messaging/client";
+import { EnablePushButton } from "@/components/messaging/enable-push-button";
 import type { PublicConversation } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
@@ -157,6 +158,11 @@ export function MessagePage() {
           My cart
         </Link>
       </header>
+
+      {/* Push is opt-in, and only ever prompted by this click. */}
+      <div className="flex justify-center border-b border-border bg-white py-1">
+        <EnablePushButton />
+      </div>
 
       {/* Messages */}
       <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-3">

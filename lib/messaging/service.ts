@@ -25,11 +25,11 @@ import type {
  * Collections:
  *   conversations/{uid}          one per customer, id === customer uid
  *   conversations/{uid}/messages/{messageId}
- *   admins/{uid}                 allow-list created from ADMIN_EMAILS
+ *   conversations/{uid}/deviceTokens/{token}   push targets for that customer
+ *   users/{uid}.role             "admin" grants the admin panel (DB-driven)
  */
 
 const CONVERSATIONS = "conversations";
-const ADMINS = "admins";
 const ACTIVE_WINDOW_MS = 15 * 60 * 1000;
 export const PAGE_SIZE = 30;
 
@@ -41,42 +41,43 @@ function db() {
 /* Admin authorisation                                                        */
 /* -------------------------------------------------------------------------- */
 
-/** Emails allowed to be admins, from ADMIN_EMAILS (comma separated). */
-function adminEmails() {
-  return (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
+/**
+ * Whether a users/{uid} profile grants admin rights.
+ *
+ * The ONLY admin signal is `role == "admin"` on the user document. There is no
+ * environment-variable allow-list: access is granted and revoked by writing to
+ * Firestore, and the rules below stop a user from promoting themselves.
+ */
+function profileIsAdmin(data: FirebaseFirestore.DocumentData | undefined) {
+  if (!data) return false;
+  const role = String(data.role ?? "").toLowerCase();
+  // "admin" and legacy "ADMIN"/"Admin" all count; "user"/"customer" never do.
+  return role === "admin" && data.disabled !== true;
 }
 
 /**
- * Resolves whether the caller is an administrator.
+ * Resolves whether the caller is an administrator, from the database.
  *
- * Two independent conditions must both hold:
- *  1. the verified token's email is in ADMIN_EMAILS (or ADMIN_EMAIL);
- *  2. an `admins/{uid}` document exists for that uid.
- *
- * Requiring the document means removing access is a single Firestore write and
- * takes effect immediately, without redeploying env vars.
- */
-/**
- * Resolves whether the caller is an administrator.
- *
- * The **verified token email** being on ADMIN_EMAILS is the single source of
- * truth. `admins/{uid}` is a record of that decision, not a second gate: if it
- * were required, removing someone from ADMIN_EMAILS would leave their old
- * document behind and keep their access alive.
+ * Read on every privileged request (not cached in a token), so demoting someone
+ * takes effect immediately rather than after their ID token expires.
  */
 export async function resolveAdmin(user: AuthUser): Promise<boolean> {
-  const email = user.email?.toLowerCase();
-  if (!email) return false;
-  return adminEmails().includes(email);
+  const snapshot = await db().collection("users").doc(user.uid).get();
+  return profileIsAdmin(snapshot.data());
 }
 
 export async function requireAdmin(user: AuthUser): Promise<void> {
   if (!(await resolveAdmin(user))) {
     throw new ApiError("You don't have access to the admin panel.", 403);
   }
+}
+
+/** Uids of every administrator, used to fan out admin push notifications. */
+export async function listAdminUids(): Promise<string[]> {
+  const snapshot = await db().collection("users").where("role", "==", "admin").limit(50).get();
+  return snapshot.docs
+    .filter((doc) => doc.data().disabled !== true)
+    .map((doc) => doc.id);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -310,7 +311,21 @@ export async function sendCustomerMessage(
   });
 
   const snapshot = await db().collection(CONVERSATIONS).doc(user.uid).collection("messages").doc(id).get();
-  return toMessage(user.uid, id, snapshot.data()!);
+  const saved = snapshot.data()!;
+
+  // Push is fire-and-forget: a delivery failure must never fail the message.
+  void import("./push")
+    .then(({ notifyAdminsOfCustomerMessage }) =>
+      notifyAdminsOfCustomerMessage({
+        customerName: name,
+        preview: preview(input.kind, input.text ?? ""),
+        conversationId: user.uid,
+        senderUid: user.uid,
+      }),
+    )
+    .catch(() => {});
+
+  return toMessage(user.uid, id, saved);
 }
 
 /**
@@ -360,6 +375,20 @@ export async function sendOrderMessage(
     .update({ orderToken: clientToken });
   await conversationRef.update({ lastOrderToken: clientToken, lastOrderAt: FieldValue.serverTimestamp() });
   const snapshot = await conversationRef.collection("messages").doc(id).get();
+
+  // An order is the alert admins most need to see, even with the tab closed.
+  const itemCount = order.lines.reduce((sum, line) => sum + line.quantity, 0);
+  void import("./push")
+    .then(({ notifyAdminsOfCustomerMessage }) =>
+      notifyAdminsOfCustomerMessage({
+        customerName: name,
+        preview: `🛒 New order ${order.reference} · ${itemCount} item${itemCount === 1 ? "" : "s"}`,
+        conversationId: user.uid,
+        senderUid: user.uid,
+      }),
+    )
+    .catch(() => {});
+
   return { message: toMessage(user.uid, id, snapshot.data()!), duplicated: false };
 }
 
@@ -467,6 +496,17 @@ export async function sendAdminMessage(
   });
 
   const snapshot = await db().collection(CONVERSATIONS).doc(conversationUid).collection("messages").doc(id).get();
+
+  void import("./push")
+    .then(({ notifyCustomerOfAdminMessage }) =>
+      notifyCustomerOfAdminMessage({
+        customerUid: conversationUid,
+        preview: preview(input.kind, input.text ?? ""),
+        conversationId: conversationUid,
+      }),
+    )
+    .catch(() => {});
+
   return toMessage(conversationUid, id, snapshot.data()!);
 }
 
@@ -509,22 +549,3 @@ export async function getAdminStats(): Promise<AdminStats> {
 /* -------------------------------------------------------------------------- */
 /* Admin bootstrap                                                            */
 /* -------------------------------------------------------------------------- */
-
-/**
- * Records the calling admin in `admins/{uid}`.
- *
- * Cosmetic/bookkeeping only — it is written AFTER the allow-list has already
- * authorised the request, and it is never what grants access.
- */
-export async function recordAdminDocument(user: AuthUser): Promise<void> {
-  if (!user.email || !adminEmails().includes(user.email.toLowerCase())) {
-    throw new ApiError("You don't have access to the admin panel.", 403);
-  }
-  await db()
-    .collection(ADMINS)
-    .doc(user.uid)
-    .set(
-      { email: user.email.toLowerCase(), role: "admin", updatedAt: FieldValue.serverTimestamp() },
-      { merge: true },
-    );
-}

@@ -27,6 +27,7 @@ import {
   useLiveMessages,
 } from "@/components/messaging/chat-parts";
 import { adminApi } from "@/lib/messaging/client";
+import { EnablePushButton } from "@/components/messaging/enable-push-button";
 import type { AdminStats, PublicConversation } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +97,12 @@ export function AdminDashboard() {
       setConversations(list);
       setStats(counters);
       setError(null);
+
+      // A push notification deep-links here with ?c=<uid>; open that thread.
+      const wanted = new URLSearchParams(window.location.search).get("c");
+      if (wanted && list.some((item) => item.id === wanted)) {
+        setSelected((current) => current ?? wanted);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Couldn't load conversations.");
     }
@@ -192,6 +199,7 @@ export function AdminDashboard() {
           <p className="text-xs text-ink-soft">Signed in as {user?.email}</p>
         </div>
         <div className="flex items-center gap-2">
+          <EnablePushButton className="mr-1" />
           <button
             type="button"
             onClick={() => setSoundOn((value) => !value)}

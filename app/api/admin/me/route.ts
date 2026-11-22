@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { apiErrorResponse, requireUser } from "@/lib/firebase/admin";
-import { recordAdminDocument, resolveAdmin } from "@/lib/messaging/service";
+import { resolveAdmin } from "@/lib/messaging/service";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,9 @@ export const dynamic = "force-dynamic";
  * The single gate for the admin panel. The client calls this on mount and only
  * renders the dashboard when it returns 200 — the URL alone grants nothing.
  *
- * Authorisation is the verified token email against ADMIN_EMAILS. If that fails
- * we return 403 immediately and write nothing.
+ * Authorisation comes from `role: "admin"` on users/{uid} in Firestore, read on
+ * every request. There is no email allow-list and nothing is written here, so
+ * demoting someone takes effect immediately.
  */
 export async function GET(request: Request) {
   try {
@@ -24,9 +25,6 @@ export async function GET(request: Request) {
         { status: 403 },
       );
     }
-
-    // Authorised — keep the audit record in sync (best effort, never blocking).
-    await recordAdminDocument(user).catch(() => {});
 
     return NextResponse.json({
       admin: { uid: user.uid, email: user.email, role: "admin" },

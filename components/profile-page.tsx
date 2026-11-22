@@ -115,6 +115,8 @@ export function ProfilePage() {
     setError("");
     setNotice("");
     try {
+      // `role` and `disabled` are deliberately absent: Firestore rules reject
+      // any client write that touches them (only the server may grant admin).
       await setDoc(
         doc(getDb(), "users", user.uid),
         { ...profile, email: user.email ?? null, updatedAt: serverTimestamp() },
