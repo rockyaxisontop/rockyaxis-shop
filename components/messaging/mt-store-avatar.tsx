@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, Facebook, Instagram, Mail, Music2, Youtube, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BadgeCheck, X } from "lucide-react";
 
 import { MT_STORE } from "@/components/messaging/chat-parts";
-import { SITE_CONTACT, SITE_SOCIAL_LINKS } from "@/lib/site";
+import { MtStoreIdentity } from "@/components/messaging/mt-store-identity";
 import { cn } from "@/lib/utils";
-
-const ICONS = {
-  instagram: Instagram,
-  facebook: Facebook,
-  tiktok: Music2,
-  youtube: Youtube,
-} as const;
 
 /**
  * The official MT Store avatar. Clicking it opens the store's contact card:
@@ -23,22 +16,42 @@ export function MtStoreAvatar({
   size = 36,
   online = false,
   className,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   size?: number;
   online?: boolean;
   className?: string;
+  /** Controlled open state, so the store name can toggle the same card. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean | ((current: boolean) => boolean)) => {
+    const value = typeof next === "function" ? next(open) : next;
+    if (controlledOpen === undefined) setUncontrolledOpen(value);
+    onOpenChange?.(value);
+  };
+  // Keep a stable reference for the document listeners below.
+  const close = useCallback(() => {
+    if (controlledOpen === undefined) setUncontrolledOpen(false);
+    onOpenChange?.(false);
+  }, [controlledOpen, onOpenChange]);
   const wrapper = useRef<HTMLDivElement>(null);
 
   // Close on outside click / Escape, like any other popover.
   useEffect(() => {
     if (!open) return;
     const onPointer = (event: MouseEvent) => {
-      if (!wrapper.current?.contains(event.target as Node)) setOpen(false);
+      // The store-name button lives outside this wrapper but drives the same
+      // state, so its own clicks must not immediately close the card.
+      if (wrapper.current?.contains(event.target as Node)) return;
+      if ((event.target as HTMLElement)?.closest?.("[data-store-identity-trigger]")) return;
+      close();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") close();
     };
     document.addEventListener("mousedown", onPointer);
     document.addEventListener("keydown", onKey);
@@ -46,7 +59,7 @@ export function MtStoreAvatar({
       document.removeEventListener("mousedown", onPointer);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [close, open]);
 
   return (
     <div ref={wrapper} className={cn("relative shrink-0", className)}>
@@ -101,36 +114,8 @@ export function MtStoreAvatar({
             </button>
           </div>
 
-          <div className="p-3">
-            <a
-              href={`mailto:${SITE_CONTACT.email}`}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-ink transition hover:bg-surface-2"
-            >
-              <Mail className="size-3.5 text-brand" />
-              <span className="truncate">{SITE_CONTACT.email}</span>
-            </a>
-
-            <p className="mt-2 px-2 text-[10px] font-bold tracking-wider text-ink-soft uppercase">
-              Follow us
-            </p>
-            <ul className="mt-1 grid grid-cols-2 gap-1">
-              {SITE_SOCIAL_LINKS.map(({ label, href, icon }) => {
-                const Icon = ICONS[icon];
-                return (
-                  <li key={label}>
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-ink transition hover:bg-brand-tint hover:text-brand"
-                    >
-                      <Icon className="size-3.5 text-brand" />
-                      {label}
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
+          <div className="p-2.5">
+            <MtStoreIdentity />
           </div>
         </div>
       ) : null}

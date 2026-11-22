@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageCircle, ShoppingBag, X } from "lucide-react";
 
+import { MtStoreIdentity } from "@/components/messaging/mt-store-identity";
+
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,9 +44,13 @@ export function FloatingOrderContact() {
         >
           <div className="flex items-start justify-between gap-4 bg-brand px-4 py-3 text-white">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white p-1">
+              <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-white">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon-192.png" alt="" className="size-full rounded-md object-cover" />
+                <img
+                  src="/mt-store-avatar-96.png"
+                  alt="MT Store"
+                  className="size-full rounded-full object-cover"
+                />
               </span>
               <div>
                 <h2 id="order-contact-title" className="text-sm font-bold">
@@ -67,6 +73,8 @@ export function FloatingOrderContact() {
             <p className="text-xs leading-5 text-ink-soft">
               Send your order or ask a question — everything happens right here on our site.
             </p>
+            {/* Identity + socials, so customers can verify who they are talking to. */}
+            <MtStoreIdentity compact />
             <Link
               href="/message"
               className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand text-sm font-bold text-white transition hover:brightness-110"

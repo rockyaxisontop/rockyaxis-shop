@@ -89,9 +89,16 @@ export function MessagePage() {
 
   // First visit: prompt for notifications on the customer's first tap. Browsers
   // ignore permission prompts that fire without a gesture.
+  const [pushSettled, setPushSettled] = useState(false);
   useEffect(() => {
     if (state !== "ready") return;
-    const cleanup = askForPushOnce();
+    // If the permission was already decided (or asked before), don't hold the
+    // install banner hostage to a prompt that will never appear.
+    if (localStorage.getItem("mt-store:push-asked")) {
+      setPushSettled(true);
+      return;
+    }
+    const cleanup = askForPushOnce(() => setPushSettled(true));
     return cleanup;
   }, [state]);
 
@@ -113,6 +120,7 @@ export function MessagePage() {
   }, [messages.length]);
 
   const [replyTo, setReplyTo] = useState<PublicMessage | null>(null);
+  const [identityOpen, setIdentityOpen] = useState(false);
 
   async function send(input: Parameters<typeof messageApi.send>[0]) {
     const { message } = await messageApi.send(input);
@@ -150,12 +158,18 @@ export function MessagePage() {
         >
           <ArrowLeft className="size-4" />
         </Link>
-        <MtStoreAvatar size={36} online />
+        <MtStoreAvatar size={36} online open={identityOpen} onOpenChange={setIdentityOpen} />
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1 text-sm font-extrabold text-ink">
+          <button
+            type="button"
+            data-store-identity-trigger
+            onClick={() => setIdentityOpen((value) => !value)}
+            aria-expanded={identityOpen}
+            className="flex items-center gap-1 text-left text-sm font-extrabold text-ink hover:text-brand"
+          >
             {MT_STORE.name}
             <ShieldCheck className="size-3.5 text-brand" aria-label="Official account" />
-          </p>
+          </button>
           <p className="truncate text-[11px] text-ink-soft">
             {conversation?.lastMessage.at ? "Online · replies in minutes" : MT_STORE.tagline}
           </p>
@@ -225,9 +239,12 @@ export function MessagePage() {
 
       <MessageComposer onSend={send} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
 
-      {/* Offered only after the customer has actually sent a couple of messages. */}
+      {/* Offered only after the customer has actually sent a couple of messages
+          AND answered the notification prompt, so the two never collide. */}
       <InstallAppBanner
-        messageCount={messages.filter((message) => message.senderRole === "customer").length}
+        messageCount={
+          pushSettled ? messages.filter((message) => message.senderRole === "customer").length : 0
+        }
       />
     </div>
   );

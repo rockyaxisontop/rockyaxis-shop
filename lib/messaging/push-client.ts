@@ -113,11 +113,22 @@ const ASKED_KEY = "mt-store:push-asked";
  * Browsers ignore (or permanently block) prompts that fire without a gesture,
  * so this runs on the first *tap* in the page — any click counts. It asks once
  * per device: the answer, granted or denied, is remembered.
+ *
+ * `onSettled` fires when the prompt has been answered (or skipped). The install
+ * banner waits for it, so a customer never gets two banners at once.
  */
-export function askForPushOnce(): () => void {
+export function askForPushOnce(onSettled?: () => void): () => void {
   if (typeof window === "undefined") return () => {};
 
   let done = false;
+  const finish = () => {
+    try {
+      onSettled?.();
+    } catch {
+      /* ignore */
+    }
+  };
+
   const tryAsk = async () => {
     if (done) return;
     done = true;
@@ -131,6 +142,8 @@ export function askForPushOnce(): () => void {
       await enablePush();
     } catch {
       /* never block the chat over a permission prompt */
+    } finally {
+      finish();
     }
   };
 

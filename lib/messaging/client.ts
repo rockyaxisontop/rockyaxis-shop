@@ -66,10 +66,10 @@ export const messageApi = {
   markRead: () => call<{ ok: true }>("/api/messages/read", { method: "POST" }),
 
   uploadUrl: (file: { name: string; contentType: string; size: number }) =>
-    call<{ uploadUrl: string; url: string; path: string; kind: MessageKind }>(
-      "/api/messages/upload-url",
-      { method: "POST", body: JSON.stringify(file) },
-    ),
+    call<
+      | { provider: "cloudinary"; uploadUrl: string; fields: Record<string, string>; fileName: string; kind: MessageKind }
+      | { provider: "storage"; uploadUrl: string; url: string; path: string; kind: MessageKind }
+    >("/api/messages/upload-url", { method: "POST", body: JSON.stringify(file) }),
 };
 
 /** Admin-side messaging API. */

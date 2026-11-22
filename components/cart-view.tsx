@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Gift, House, MapPin, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 export function CartView() {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const { currency: localCurrency, countryName, locationLabel } = useCurrency();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
@@ -259,14 +261,20 @@ export function CartView() {
               <div className="mt-4 flex flex-col gap-2">
                 <Link
                   href="/checkout"
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-bold text-white transition hover:brightness-110"
+                  prefetch={false}
+                  onTouchStart={() => router.prefetch("/checkout")}
+                  onMouseEnter={() => router.prefetch("/checkout")}
+                  className="inline-flex h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl bg-brand text-sm font-bold text-white transition hover:brightness-110"
                 >
                   <ShoppingBag className="size-4" />
                   Continue to checkout
                 </Link>
                 <Link
                   href="/freebie"
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#f36d25] to-[#ee385e] text-sm font-bold text-white transition hover:brightness-110"
+                  prefetch={false}
+                  onTouchStart={() => router.prefetch("/freebie")}
+                  onMouseEnter={() => router.prefetch("/freebie")}
+                  className="inline-flex h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#f36d25] to-[#ee385e] text-sm font-bold text-white transition hover:brightness-110"
                 >
                   <Gift className="size-4" />
                   Get items for FREE

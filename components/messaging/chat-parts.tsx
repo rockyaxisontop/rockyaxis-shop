@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { FileText, ImageIcon, Link2, Mic, Reply, Video, X } from "lucide-react";
 
 import { messageApi, adminApi } from "@/lib/messaging/client";
@@ -404,18 +405,16 @@ export function OrderCard({
                     : ""}
                   {line.productId ? ` · ID ${line.productId}` : ""}
                 </p>
-                {line.url ? (
-                  <a
-                    href={line.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                {line.productId ? (
+                  <Link
+                    href={`/products/${encodeURIComponent(line.productId)}`}
                     className={cn(
                       "inline-flex items-center gap-1 text-[10px] font-bold underline underline-offset-2",
                       onDark ? "text-white" : "text-brand",
                     )}
                   >
                     <Link2 className="size-3" /> View product
-                  </a>
+                  </Link>
                 ) : null}
               </div>
             </li>
