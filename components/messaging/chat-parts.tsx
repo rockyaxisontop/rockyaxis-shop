@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FileText, ImageIcon, Link2, Mic, Paperclip, Send, Video, X } from "lucide-react";
 
 import { messageApi, adminApi } from "@/lib/messaging/client";
+import { useCurrency } from "@/components/currency-provider";
+import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice, storePrice } from "@/lib/discount";
+import { formatMoney } from "@/lib/format";
 import type { Attachment, MessageKind, OrderPayload, PublicMessage } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
@@ -191,7 +194,9 @@ export function MessageBubble({ message, mine, showAvatar }: BubbleProps) {
                 : "rounded-bl-md bg-surface-2 text-ink",
           )}
         >
-          {isOrder && message.order ? <OrderCard order={message.order} mine={mine} /> : null}
+          {isOrder && message.order ? (
+            <OrderCard order={message.order} mine={mine} onDark={mine} />
+          ) : null}
 
           {message.attachment ? (
             <AttachmentView attachment={message.attachment} onOpen={setLightbox} />
@@ -237,53 +242,124 @@ export function MessageBubble({ message, mine, showAvatar }: BubbleProps) {
   );
 }
 
-/** The order summary card — the whole reason for the conversation. */
-export function OrderCard({ order, mine }: { order: OrderPayload; mine: boolean }) {
+/**
+ * The order summary card — the whole reason for the conversation.
+ *
+ * Prices are stored in USD (the cart's currency). They are shown exactly like
+ * the cart page: our 80% discounted price, the original struck through, and
+ * converted into the visitor's currency by the same helpers the cart uses.
+ */
+export function OrderCard({
+  order,
+  mine,
+  onDark,
+}: {
+  order: OrderPayload;
+  mine: boolean;
+  /** White text on the brand-coloured bubble. */
+  onDark: boolean;
+}) {
+  const { currency } = useCurrency();
+
+  // One total in the visitor's currency. If a legacy order mixed currencies we
+  // fall back to summing per currency and joining, so nothing is lost.
+  const currencies = new Set(order.lines.map((line) => line.currency));
+  const singleCurrency = currencies.size === 1;
+  const payTotal = order.lines.reduce(
+    (sum, line) => sum + storeLineTotal(line.price, line.quantity, currency),
+    0,
+  );
+  const listTotal = order.lines.reduce(
+    (sum, line) => sum + storeListPrice(line.price, currency) * line.quantity,
+    0,
+  );
+  const saved = listTotal - payTotal;
+
   return (
     <div className={cn("min-w-64 p-3", mine ? "" : "bg-white")}>
-      <p className={cn("text-[10px] font-extrabold tracking-widest uppercase", mine ? "text-white/70" : "text-brand")}>
+      <p
+        className={cn(
+          "text-[10px] font-extrabold tracking-widest uppercase",
+          onDark ? "text-white/70" : "text-brand",
+        )}
+      >
         Order {order.reference}
       </p>
-      <ul className={cn("mt-2 flex flex-col gap-2", mine ? "text-white" : "text-ink")}>
-        {order.lines.map((line) => (
-          <li key={`${line.productId}-${JSON.stringify(line.options ?? {})}`} className="flex gap-2">
-            {line.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={line.image} alt="" className="size-12 shrink-0 rounded-lg bg-white object-cover" />
-            ) : (
-              <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-white/20">
-                <ImageIcon className="size-4" />
-              </span>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 text-xs leading-snug font-semibold">{line.title}</p>
-              {line.options && Object.keys(line.options).length > 0 ? (
-                <p className={cn("text-[10px]", mine ? "text-white/75" : "text-ink-soft")}>
-                  {Object.entries(line.options)
-                    .map(([key, value]) => `${key}: ${value}`)
-                    .join(" · ")}
+      <ul className={cn("mt-2 flex flex-col gap-2.5", onDark ? "text-white" : "text-ink")}>
+        {order.lines.map((line, index) => {
+          const unitPay = storePrice(line.price, currency);
+          const unitList = storeListPrice(line.price, currency);
+          return (
+            <li key={`${line.productId}-${index}`} className="flex gap-2">
+              {line.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={line.image} alt="" className="size-12 shrink-0 rounded-lg bg-white object-cover" />
+              ) : (
+                <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-white/20">
+                  <ImageIcon className="size-4" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 text-xs leading-snug font-semibold">{line.title}</p>
+                {line.options && Object.keys(line.options).length > 0 ? (
+                  <p className={cn("text-[10px]", onDark ? "text-white/75" : "text-ink-soft")}>
+                    {Object.entries(line.options)
+                      .map(([key, value]) => `${key}: ${value}`)
+                      .join(" · ")}
+                  </p>
+                ) : null}
+
+                {/* Same price treatment as the cart: was → now. */}
+                <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
+                  <span
+                    className={cn(
+                      "text-xs font-extrabold",
+                      onDark ? "text-white" : "text-ink",
+                    )}
+                  >
+                    {formatMoney(unitPay, currency)}
+                  </span>
+                  {unitList > unitPay ? (
+                    <span
+                      className={cn(
+                        "text-[10px] line-through",
+                        onDark ? "text-white/60" : "text-ink-soft",
+                      )}
+                    >
+                      {formatMoney(unitList, currency)}
+                    </span>
+                  ) : null}
+                  {unitList > unitPay ? (
+                    <span className="rounded bg-save px-1 py-0.5 text-[9px] font-extrabold text-ink">
+                      −{STORE_DISCOUNT_PERCENT}%
+                    </span>
+                  ) : null}
                 </p>
-              ) : null}
-              <p className={cn("text-[10px]", mine ? "text-white/75" : "text-ink-soft")}>
-                Qty {line.quantity} · {line.price.toFixed(2)} {line.currency}
-                {line.productId ? ` · ID ${line.productId}` : ""}
-              </p>
-              {line.url ? (
-                <a
-                  href={line.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    "inline-flex items-center gap-1 text-[10px] font-bold underline underline-offset-2",
-                    mine ? "text-white" : "text-brand",
-                  )}
-                >
-                  <Link2 className="size-3" /> View product
-                </a>
-              ) : null}
-            </div>
-          </li>
-        ))}
+
+                <p className={cn("text-[10px]", onDark ? "text-white/75" : "text-ink-soft")}>
+                  Qty {line.quantity}
+                  {line.quantity > 1
+                    ? ` · ${formatMoney(unitPay * line.quantity, currency)} total`
+                    : ""}
+                  {line.productId ? ` · ID ${line.productId}` : ""}
+                </p>
+                {line.url ? (
+                  <a
+                    href={line.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "inline-flex items-center gap-1 text-[10px] font-bold underline underline-offset-2",
+                      onDark ? "text-white" : "text-brand",
+                    )}
+                  >
+                    <Link2 className="size-3" /> View product
+                  </a>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
       </ul>
       <div
         className={cn(
@@ -292,10 +368,24 @@ export function OrderCard({ order, mine }: { order: OrderPayload; mine: boolean 
         )}
       >
         <span>Total</span>
-        <span>
-          {Object.entries(order.totals)
-            .map(([currency, amount]) => `${amount.toFixed(2)} ${currency}`)
-            .join(" + ")}
+        <span className="text-right">
+          {singleCurrency
+            ? formatMoney(payTotal, currency)
+            : Object.entries(
+                order.lines.reduce<Record<string, number>>((totals, line) => {
+                  totals[line.currency] =
+                    (totals[line.currency] ?? 0) +
+                    storeLineTotal(line.price, line.quantity, line.currency);
+                  return totals;
+                }, {}),
+              )
+                .map(([code, amount]) => formatMoney(amount, code))
+                .join(" + ")}
+          {singleCurrency && saved > 0 ? (
+            <span className={cn("block text-[9px] font-semibold", onDark ? "text-white/60" : "text-stock")}>
+              You save {formatMoney(saved, currency)}
+            </span>
+          ) : null}
         </span>
       </div>
     </div>
