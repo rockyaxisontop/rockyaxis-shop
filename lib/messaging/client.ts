@@ -3,12 +3,14 @@
 import { auth } from "@/lib/firebase/client";
 
 import type {
+  AdminCustomerProfile,
   AdminStats,
   Attachment,
   MessageKind,
   OrderPayload,
   PublicConversation,
   PublicMessage,
+  ReplyPreview,
 } from "./types";
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -35,6 +37,8 @@ export type SendInput = {
   text?: string;
   attachment?: Attachment;
   order?: OrderPayload;
+  /** Set when answering a specific message. */
+  replyTo?: ReplyPreview;
 };
 
 /** Customer-side messaging API. */
@@ -88,4 +92,8 @@ export const adminApi = {
 
   markRead: (uid: string) =>
     call<{ ok: true }>(`/api/admin/conversations/${encodeURIComponent(uid)}/read`, { method: "POST" }),
+
+  /** Full profile the customer filled in, plus their orders. */
+  profile: (uid: string) =>
+    call<AdminCustomerProfile>(`/api/admin/conversations/${encodeURIComponent(uid)}/profile`),
 };

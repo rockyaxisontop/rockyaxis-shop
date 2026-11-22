@@ -26,6 +26,16 @@ export type Attachment = {
   name: string;
   contentType: string;
   size: number;
+  /** Seconds, for audio messages. */
+  duration?: number;
+};
+
+/** Snapshot of the message being replied to, so the quote survives edits. */
+export type ReplyPreview = {
+  messageId: string;
+  senderName: string;
+  kind: MessageKind;
+  snippet: string;
 };
 
 export type PublicMessage = {
@@ -39,6 +49,8 @@ export type PublicMessage = {
   text: string;
   attachment?: Attachment;
   order?: OrderPayload;
+  /** Set when this message replies to another. */
+  replyTo?: ReplyPreview;
   /** Server time the message was written. */
   createdAt: string;
   /** When the other side's device fetched it. */
@@ -89,4 +101,36 @@ export type AdminPermissions = {
   email: string;
   role: "admin";
   allowedConversationIds: "all";
+};
+
+/** Everything the admin panel shows about one customer. */
+export type AdminCustomerProfile = {
+  uid: string;
+  conversation: PublicConversation;
+  profile: {
+    fullName: string;
+    email: string | null;
+    phoneNumber: string;
+    buildingStreet: string;
+    locality: string;
+    region: string;
+    city: string;
+    area: string;
+    address: string;
+    label: string;
+    birthday: string;
+    gender: string;
+    photoURL: string | null;
+    coordinates: { latitude: number; longitude: number } | null;
+    role: string;
+    createdAt: string | null;
+  };
+  orders: Array<{
+    id: string;
+    reference: string;
+    total: number;
+    currency: string;
+    itemCount: number;
+    createdAt: string | null;
+  }>;
 };

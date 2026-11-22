@@ -22,13 +22,14 @@ import { useAuth } from "@/components/providers";
 import {
   MT_STORE,
   MessageBubble,
-  MessageComposer,
   formatDay,
   useLiveMessages,
 } from "@/components/messaging/chat-parts";
+import { MessageComposer } from "@/components/messaging/composer";
 import { adminApi } from "@/lib/messaging/client";
+import { CustomerInfoDrawer } from "@/components/admin/customer-info-drawer";
 import { EnablePushButton } from "@/components/messaging/enable-push-button";
-import type { AdminStats, PublicConversation } from "@/lib/messaging/types";
+import type { AdminStats, PublicConversation, PublicMessage } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "unreplied" | "unread" | "replied" | "newest" | "active";
@@ -410,6 +411,7 @@ function AdminChat({
   });
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [replyTo, setReplyTo] = useState<PublicMessage | null>(null);
 
   // Opening a thread clears its unread badge for the admin.
   useEffect(() => {
@@ -438,8 +440,25 @@ function AdminChat({
         >
           <ArrowLeft className="size-4" />
         </button>
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand/10 text-xs font-extrabold text-brand">
-          {(conversation.customer.name || "C").slice(0, 1).toUpperCase()}
+        <span className="relative shrink-0">
+          {conversation.customer.photoURL ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={conversation.customer.photoURL}
+              alt=""
+              className="size-8 rounded-full object-cover"
+            />
+          ) : (
+            <span className="grid size-8 place-items-center rounded-full bg-brand/10 text-xs font-extrabold text-brand">
+              {(conversation.customer.name || "C").slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <span
+            className={cn(
+              "absolute right-0 bottom-0 size-2.5 rounded-full border-2 border-white",
+              isOnline(conversation.lastActiveAt) ? "bg-stock" : "bg-ink-soft/40",
+            )}
+          />
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-ink">{conversation.customer.name}</p>
@@ -450,22 +469,19 @@ function AdminChat({
         </div>
         <button
           type="button"
-          onClick={() => setShowInfo((value) => !value)}
-          className="shrink-0 rounded-lg border border-border px-2 py-1 text-[10px] font-bold text-ink-soft"
+          onClick={() => setShowInfo(true)}
+          className="shrink-0 rounded-lg border border-border px-2 py-1 text-[10px] font-bold text-ink-soft transition hover:border-brand hover:text-brand"
         >
-          {showInfo ? "Hide info" : "Customer info"}
+          Customer info
         </button>
       </header>
 
       {showInfo ? (
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 border-b border-border bg-white px-3 py-2 text-[11px]">
-          <Info label="Customer ID" value={conversation.id} mono />
-          <Info label="Email" value={conversation.customer.email ?? "—"} />
-          <Info label="Phone" value={conversation.customer.phone ?? "—"} />
-          <Info label="Address" value={conversation.customer.address || "—"} />
-          <Info label="Messages" value={String(conversation.messageCount)} />
-          <Info label="Unread" value={String(conversation.unreadForAdmin)} />
-        </dl>
+        <CustomerInfoDrawer
+          conversationUid={conversation.id}
+          customerName={conversation.customer.name}
+          onClose={() => setShowInfo(false)}
+        />
       ) : null}
 
       <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-3">
@@ -497,25 +513,17 @@ function AdminChat({
                 mine={message.senderRole === "admin"}
                 viewer="admin"
                 showAvatar={!previous || previous.senderId !== message.senderId}
+                onReply={setReplyTo}
               />
             </div>
           );
         })}
       </div>
 
-      <MessageComposer onSend={reply} />
+      <MessageComposer onSend={reply} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
       <p className="border-t border-border bg-white px-3 py-1 text-center text-[10px] text-ink-soft">
         Replying as {MT_STORE.name} · your reply appears instantly for the customer
       </p>
-    </div>
-  );
-}
-
-function Info({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-[9px] font-bold tracking-wide text-ink-soft uppercase">{label}</dt>
-      <dd className={cn("truncate text-ink", mono && "font-mono text-[10px]")}>{value}</dd>
     </div>
   );
 }

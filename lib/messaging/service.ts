@@ -12,6 +12,7 @@ import type {
   OrderPayload,
   PublicConversation,
   PublicMessage,
+  ReplyPreview,
 } from "./types";
 
 /**
@@ -109,6 +110,7 @@ function toMessage(conversationId: string, id: string, data: FirebaseFirestore.D
     text: (data.text as string) ?? "",
     attachment: (data.attachment as Attachment) ?? undefined,
     order: (data.order as OrderPayload) ?? undefined,
+    replyTo: (data.replyTo as ReplyPreview) ?? undefined,
     createdAt: toIso(data.createdAt) ?? new Date().toISOString(),
     deliveredAt: toIso(data.deliveredAt),
     readAt: toIso(data.readAt),
@@ -229,6 +231,7 @@ type MessageInput = {
   text: string;
   attachment?: Attachment;
   order?: OrderPayload;
+  replyTo?: ReplyPreview;
 };
 
 function buildMessage(input: MessageInput) {
@@ -241,6 +244,7 @@ function buildMessage(input: MessageInput) {
     text: input.text.slice(0, 4000),
     attachment: input.attachment ?? null,
     order: input.order ?? null,
+    replyTo: input.replyTo ? stripUndefined(input.replyTo) : null,
     deliveredAt: null,
     readAt: null,
   };
@@ -293,6 +297,7 @@ export async function sendCustomerMessage(
     text?: string;
     attachment?: Attachment;
     order?: OrderPayload;
+    replyTo?: ReplyPreview;
   },
 ): Promise<PublicMessage> {
   await getOrCreateMyConversation(user);
@@ -308,6 +313,7 @@ export async function sendCustomerMessage(
     text: input.text ?? "",
     attachment: input.attachment,
     order: input.order,
+    replyTo: input.replyTo,
   });
 
   const snapshot = await db().collection(CONVERSATIONS).doc(user.uid).collection("messages").doc(id).get();
@@ -476,11 +482,105 @@ export async function getConversationForAdmin(uid: string): Promise<PublicConver
   return snapshot.exists ? toConversation(uid, snapshot.data()!) : null;
 }
 
+/**
+ * Everything the customer filled in on their profile page, for the admin panel.
+ *
+ * Read live from users/{uid} rather than the copy cached on the conversation, so
+ * an address edited after the chat started is still correct.
+ */
+export type AdminCustomerProfile = {
+  uid: string;
+  conversation: PublicConversation;
+  profile: {
+    fullName: string;
+    email: string | null;
+    phoneNumber: string;
+    buildingStreet: string;
+    locality: string;
+    region: string;
+    city: string;
+    area: string;
+    address: string;
+    label: string;
+    birthday: string;
+    gender: string;
+    photoURL: string | null;
+    coordinates: { latitude: number; longitude: number } | null;
+    role: string;
+    createdAt: string | null;
+  };
+  orders: Array<{
+    id: string;
+    reference: string;
+    total: number;
+    currency: string;
+    itemCount: number;
+    createdAt: string | null;
+  }>;
+};
+
+export async function getCustomerProfileForAdmin(uid: string): Promise<AdminCustomerProfile | null> {
+  const conversation = await getConversationForAdmin(uid);
+  if (!conversation) return null;
+
+  const profileSnap = await db().collection("users").doc(uid).get();
+  const data = profileSnap.data() ?? {};
+  const str = (value: unknown) => (typeof value === "string" ? value : "");
+
+  // Order messages carry the order reference and total, so the admin can see
+  // what this customer asked for without opening each conversation.
+  const messages = await db()
+    .collection(CONVERSATIONS)
+    .doc(uid)
+    .collection("messages")
+    .orderBy("createdAt", "desc")
+    .limit(100)
+    .get();
+
+  const orders = messages.docs
+    .filter((doc) => doc.data().kind === "order" && doc.data().order)
+    .map((doc) => {
+      const order = doc.data().order as OrderPayload;
+      return {
+        id: doc.id,
+        reference: order.reference,
+        total: Object.values(order.totals ?? {})[0] ?? 0,
+        currency: order.currency,
+        itemCount: order.lines.reduce((sum, line) => sum + line.quantity, 0),
+        createdAt: toIso(doc.data().createdAt),
+      };
+    });
+
+  return {
+    uid,
+    conversation,
+    profile: {
+      fullName: str(data.fullName) || conversation.customer.name,
+      email: str(data.email) || conversation.customer.email || null,
+      phoneNumber: str(data.phoneNumber),
+      buildingStreet: str(data.buildingStreet),
+      locality: str(data.locality),
+      region: str(data.region),
+      city: str(data.city),
+      area: str(data.area),
+      address: str(data.address),
+      label: str(data.label),
+      birthday: str(data.birthday),
+      gender: str(data.gender),
+      photoURL: str(data.photoURL) || null,
+      coordinates: (data.coordinates as { latitude: number; longitude: number } | null) ?? null,
+      role: str(data.role) || "user",
+      createdAt: toIso(data.createdAt),
+    },
+    orders,
+  };
+}
+
 /** Admin replies. Sending clears the "awaiting reply" flag immediately. */
 export async function sendAdminMessage(
   admin: AuthUser,
   conversationUid: string,
-  input: { kind: MessageKind; text?: string; attachment?: Attachment },
+  input: { kind: MessageKind; text?: string; attachment?: Attachment; replyTo?: ReplyPreview },
 ): Promise<PublicMessage> {
   const conversation = await db().collection(CONVERSATIONS).doc(conversationUid).get();
   if (!conversation.exists) throw new ApiError("Conversation not found.", 404);
@@ -493,6 +593,7 @@ export async function sendAdminMessage(
     kind: input.kind,
     text: input.text ?? "",
     attachment: input.attachment,
+    replyTo: input.replyTo,
   });
 
   const snapshot = await db().collection(CONVERSATIONS).doc(conversationUid).collection("messages").doc(id).get();

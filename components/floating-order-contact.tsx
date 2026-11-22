@@ -1,18 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageCircle, Phone, X } from "lucide-react";
+import { MessageCircle, ShoppingBag, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const PHONE_NUMBER = "+977-9714501791";
-const WHATSAPP_URL = `https://wa.me/9779714501791?text=${encodeURIComponent("Hello, I need help with an order.")}`;
-
+/**
+ * Floating "contact us" bubble.
+ *
+ * It opens the shop's own messenger at /message — there is no WhatsApp or phone
+ * number involved, so every conversation stays inside MT Store.
+ */
 export function FloatingOrderContact() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname() ?? "";
   // Campaign pages have a sticky share bar on phones; keep the bubble clear of it.
-  const hasStickyBar = /^\/freebie\/mine\//.test(usePathname() ?? "");
+  const hasStickyBar = /^\/freebie\/mine\//.test(pathname);
+  // The chat page has its own composer, so the bubble would only get in the way.
+  const onChatPage = pathname.startsWith("/message");
 
   useEffect(() => {
     if (!open) return;
@@ -23,77 +30,71 @@ export function FloatingOrderContact() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [open]);
 
+  if (onChatPage) return null;
+
   return (
-    // The campaign page has a sticky share bar along the bottom edge on phones;
-    // hide the bubble there so it can never cover the Share button.
     <div className={cn("fixed right-4 z-[60]", hasStickyBar ? "hidden sm:block sm:bottom-4" : "bottom-4")}>
       {open ? (
         <section
           id="order-contact-panel"
           aria-labelledby="order-contact-title"
-          className="absolute right-0 bottom-16 w-[min(22rem,calc(100vw-3rem))] overflow-hidden rounded-xl border border-border bg-white shadow-xl shadow-black/15"
+          className="absolute right-0 bottom-16 w-[min(20rem,calc(100vw-3rem))] overflow-hidden rounded-xl border-border bg-white shadow-xl shadow-black/15"
         >
-          <div className="flex items-start justify-between gap-4 bg-[#075e54] px-4 py-4 text-white">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15">
-                <MessageCircle className="size-5" aria-hidden />
+          <div className="flex items-start justify-between gap-4 bg-brand px-4 py-3 text-white">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white p-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon-192.png" alt="" className="size-full rounded-md object-cover" />
               </span>
               <div>
-                <h2 id="order-contact-title" className="text-sm font-bold">For Order Contact Us</h2>
-                <p className="mt-0.5 text-xs text-white/80">We’re here to help with your order.</p>
+                <h2 id="order-contact-title" className="text-sm font-bold">
+                  Chat with MT Store
+                </h2>
+                <p className="mt-0.5 text-[11px] text-white/80">Replies in a few minutes.</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close order contact"
+              aria-label="Close contact panel"
               className="grid size-8 shrink-0 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <X className="size-4" />
             </button>
           </div>
 
-          <div className="p-4">
-            <a href={`tel:${PHONE_NUMBER.replaceAll("-", "")}`} className="text-sm font-semibold text-ink hover:text-brand">
-              {PHONE_NUMBER}
-            </a>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <a
-                href={WHATSAPP_URL}
-                aria-label="Chat on WhatsApp"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#128c7e] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#075e54] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#128c7e] focus-visible:ring-offset-2"
-              >
-                <MessageCircle className="size-4" aria-hidden />
-                WhatsApp
-              </a>
-              <a
-                href={`tel:${PHONE_NUMBER.replaceAll("-", "")}`}
-                aria-label={`Call ${PHONE_NUMBER}`}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border px-3 text-xs font-semibold text-ink transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-              >
-                <Phone className="size-4" aria-hidden />
-                Call now
-              </a>
-            </div>
+          <div className="p-3">
+            <p className="text-xs leading-5 text-ink-soft">
+              Send your order or ask a question — everything happens right here on our site.
+            </p>
+            <Link
+              href="/message"
+              className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand text-sm font-bold text-white transition hover:brightness-110"
+            >
+              <MessageCircle className="size-4" />
+              Open messages
+            </Link>
+            <Link
+              href="/cart"
+              className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border-border text-xs font-semibold text-ink transition hover:border-brand hover:text-brand"
+            >
+              <ShoppingBag className="size-3.5" />
+              View my cart
+            </Link>
           </div>
         </section>
       ) : null}
 
       <button
         type="button"
-        aria-label={open ? "Close order contact" : "Contact us for orders"}
+        aria-label={open ? "Close contact panel" : "Chat with MT Store"}
         aria-controls="order-contact-panel"
         aria-expanded={open}
-        title="For Order Contact Us"
+        title="Chat with MT Store"
         onClick={() => setOpen((value) => !value)}
-        className="relative grid size-14 place-items-center rounded-full bg-[#128c7e] text-white shadow-lg shadow-[#075e54]/25 transition-transform hover:scale-105 hover:bg-[#075e54] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#128c7e] focus-visible:ring-offset-2"
+        className="relative grid size-14 place-items-center overflow-hidden rounded-full bg-brand text-white shadow-lg shadow-brand/30 transition-transform hover:scale-105 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
       >
         {open ? <X className="size-6" /> : <MessageCircle className="size-6" />}
-        {!open ? (
-          <span className="absolute -top-0.5 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-white bg-[#075e54]">
-            <Phone className="size-2.5" aria-hidden />
-          </span>
-        ) : null}
       </button>
     </div>
   );

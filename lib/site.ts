@@ -29,18 +29,20 @@ export const SITE_LOCALE = "en_NP";
 
 export const SITE_CONTACT = {
   email: "support@mtstore.com",
-  phone: "+977-9714501791",
   city: "Lalitpur",
   region: "Kathmandu Valley",
   country: "Nepal",
 } as const;
 
-export const SITE_SOCIAL = [
-  "https://instagram.com/maketrendstore",
-  "https://facebook.com/maketrendstore",
-  "https://www.youtube.com/@maketrendstore",
-  "https://www.tiktok.com/@maketrendstore",
+/** Official social accounts, shown when a customer taps the MT Store avatar. */
+export const SITE_SOCIAL_LINKS = [
+  { label: "Instagram", href: "https://instagram.com/maketrendstore", icon: "instagram" },
+  { label: "Facebook", href: "https://facebook.com/maketrendstore", icon: "facebook" },
+  { label: "TikTok", href: "https://www.tiktok.com/@maketrendstore", icon: "tiktok" },
+  { label: "YouTube", href: "https://www.youtube.com/@maketrendstore", icon: "youtube" },
 ] as const;
+
+export const SITE_SOCIAL = SITE_SOCIAL_LINKS.map((link) => link.href);
 
 /** Absolute URL for a route path. */
 export function absoluteUrl(path = "/") {

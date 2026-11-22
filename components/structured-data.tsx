@@ -27,7 +27,6 @@ export function SiteStructuredData({
         url: SITE_URL,
         description: SITE_DESCRIPTION,
         email: SITE_CONTACT.email,
-        telephone: SITE_CONTACT.phone,
         sameAs: [...SITE_SOCIAL],
         address: {
           "@type": "PostalAddress",
@@ -38,7 +37,6 @@ export function SiteStructuredData({
         areaServed: { "@type": "Country", name: countryName },
         contactPoint: {
           "@type": "ContactPoint",
-          telephone: SITE_CONTACT.phone,
           contactType: "customer support",
           email: SITE_CONTACT.email,
           areaServed: countryName,

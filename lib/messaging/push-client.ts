@@ -105,6 +105,46 @@ export async function disablePush(): Promise<void> {
   localStorage.removeItem("mt-store:push-token");
 }
 
+const ASKED_KEY = "mt-store:push-asked";
+
+/**
+ * One-time permission request, used when a customer first opens /message.
+ *
+ * Browsers ignore (or permanently block) prompts that fire without a gesture,
+ * so this runs on the first *tap* in the page — any click counts. It asks once
+ * per device: the answer, granted or denied, is remembered.
+ */
+export function askForPushOnce(): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  let done = false;
+  const tryAsk = async () => {
+    if (done) return;
+    done = true;
+    cleanup();
+
+    try {
+      if (localStorage.getItem(ASKED_KEY)) return;
+      const status = await getPushStatus();
+      if (status !== "default") return;
+      localStorage.setItem(ASKED_KEY, "1");
+      await enablePush();
+    } catch {
+      /* never block the chat over a permission prompt */
+    }
+  };
+
+  const cleanup = () => {
+    window.removeEventListener("pointerdown", tryAsk);
+    window.removeEventListener("keydown", tryAsk);
+  };
+
+  window.addEventListener("pointerdown", tryAsk, { once: true });
+  window.addEventListener("keydown", tryAsk, { once: true });
+
+  return cleanup;
+}
+
 /**
  * Foreground pushes: when the tab is focused the browser shows nothing, so we
  * forward the payload to the page to refresh in place.

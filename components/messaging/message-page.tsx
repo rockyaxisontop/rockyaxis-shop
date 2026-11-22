@@ -9,12 +9,15 @@ import { useAuth } from "@/components/providers";
 import {
   MT_STORE,
   MessageBubble,
-  MessageComposer,
   formatDay,
   useLiveMessages,
 } from "@/components/messaging/chat-parts";
+import { MessageComposer } from "@/components/messaging/composer";
+import { MtStoreAvatar } from "@/components/messaging/mt-store-avatar";
 import { messageApi } from "@/lib/messaging/client";
-import { EnablePushButton } from "@/components/messaging/enable-push-button";
+import { InstallAppBanner } from "@/components/messaging/install-app-banner";
+import type { PublicMessage } from "@/lib/messaging/types";
+import { askForPushOnce } from "@/lib/messaging/push-client";
 import type { PublicConversation } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +87,14 @@ export function MessagePage() {
       });
   }, [merge, router, state]);
 
+  // First visit: prompt for notifications on the customer's first tap. Browsers
+  // ignore permission prompts that fire without a gesture.
+  useEffect(() => {
+    if (state !== "ready") return;
+    const cleanup = askForPushOnce();
+    return cleanup;
+  }, [state]);
+
   // Clear the unread badge for MT Store's replies while the thread is open.
   useEffect(() => {
     if (state !== "ready") return;
@@ -100,6 +111,8 @@ export function MessagePage() {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length]);
+
+  const [replyTo, setReplyTo] = useState<PublicMessage | null>(null);
 
   async function send(input: Parameters<typeof messageApi.send>[0]) {
     const { message } = await messageApi.send(input);
@@ -137,11 +150,7 @@ export function MessagePage() {
         >
           <ArrowLeft className="size-4" />
         </Link>
-        <span className="relative shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={MT_STORE.photo} alt="" className="size-9 rounded-full object-cover" />
-          <span className="absolute right-0 bottom-0 size-2.5 rounded-full border-2 border-white bg-stock" />
-        </span>
+        <MtStoreAvatar size={36} online />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1 text-sm font-extrabold text-ink">
             {MT_STORE.name}
@@ -158,11 +167,6 @@ export function MessagePage() {
           My cart
         </Link>
       </header>
-
-      {/* Push is opt-in, and only ever prompted by this click. */}
-      <div className="flex justify-center border-b border-border bg-white py-1">
-        <EnablePushButton />
-      </div>
 
       {/* Messages */}
       <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-3">
@@ -200,6 +204,7 @@ export function MessagePage() {
                 mine={message.senderRole === "customer"}
                 viewer="customer"
                 showAvatar={showAvatar}
+                onReply={setReplyTo}
               />
             </div>
           );
@@ -218,7 +223,12 @@ export function MessagePage() {
         Messages are seen by the MT Store team
       </div>
 
-      <MessageComposer onSend={send} />
+      <MessageComposer onSend={send} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
+
+      {/* Offered only after the customer has actually sent a couple of messages. */}
+      <InstallAppBanner
+        messageCount={messages.filter((message) => message.senderRole === "customer").length}
+      />
     </div>
   );
 }

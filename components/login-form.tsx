@@ -2,18 +2,11 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  authErrorMessage,
-  sendPasswordReset,
-  signInWithEmail,
-  signInWithGoogle,
-  signUpWithEmail,
-} from "@/lib/firebase/auth";
-import { getDb } from "@/lib/firebase/client";
+import { authErrorMessage, sendPasswordReset, signInWithEmail, signInWithGoogle, signUpWithEmail } from "@/lib/firebase/auth";
+import { ensureUserProfile } from "@/lib/firebase/profile";
 
 type Mode = "signin" | "signup";
 
@@ -39,7 +32,13 @@ export function LoginForm() {
     setError(null);
     setPending("google");
     try {
-      await signInWithGoogle();
+      const credential = await signInWithGoogle();
+      // First Google sign-in creates the profile with the default customer role.
+      await ensureUserProfile({
+        uid: credential.user.uid,
+        email: credential.user.email,
+        displayName: credential.user.displayName,
+      }).catch(() => {});
       finish();
     } catch (err) {
       setError(authErrorMessage(err));
@@ -56,15 +55,12 @@ export function LoginForm() {
     try {
       if (mode === "signup") {
         const credential = await signUpWithEmail(email, password, name || undefined);
-        await setDoc(
-          doc(getDb(), "users", credential.user.uid),
-          {
-            displayName: name || null,
-            email,
-            createdAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
+        // Always written as a normal customer, with an explicit role.
+        await ensureUserProfile({
+          uid: credential.user.uid,
+          email,
+          displayName: name || undefined,
+        }).catch(() => {});
       } else {
         await signInWithEmail(email, password);
       }

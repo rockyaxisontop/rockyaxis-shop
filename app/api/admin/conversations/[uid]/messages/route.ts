@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { ApiError, apiErrorResponse, requireUser } from "@/lib/firebase/admin";
 import { listMessages, requireAdmin, sendAdminMessage } from "@/lib/messaging/service";
-import type { Attachment, MessageKind } from "@/lib/messaging/types";
+import type { Attachment, MessageKind, ReplyPreview } from "@/lib/messaging/types";
 
 export const dynamic = "force-dynamic";
 
@@ -33,13 +33,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ uid
       kind?: MessageKind;
       text?: string;
       attachment?: Attachment;
+      replyTo?: ReplyPreview;
     };
 
     const kind = body.kind && KINDS.includes(body.kind) ? body.kind : "text";
     const text = (body.text ?? "").trim();
     if (!text && !body.attachment) throw new ApiError("Write a reply first.", 400);
 
-    const message = await sendAdminMessage(user, uid, { kind, text, attachment: body.attachment });
+    const message = await sendAdminMessage(user, uid, {
+      kind,
+      text,
+      attachment: body.attachment,
+      replyTo: body.replyTo?.messageId
+        ? {
+            messageId: String(body.replyTo.messageId).slice(0, 100),
+            senderName: String(body.replyTo.senderName ?? "").slice(0, 80),
+            kind: KINDS.includes(body.replyTo.kind) ? body.replyTo.kind : "text",
+            snippet: String(body.replyTo.snippet ?? "").slice(0, 140),
+          }
+        : undefined,
+    });
     return NextResponse.json({ message });
   } catch (error) {
     return apiErrorResponse(error);

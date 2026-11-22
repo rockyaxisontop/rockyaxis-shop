@@ -98,6 +98,29 @@ async function squareIcon(size, { padding = 0.18, radius = 0, plate = true, mark
   return sharp(masked).png({ compressionLevel: 9 }).toBuffer();
 }
 
+/**
+ * Round chat avatar using the FULL logo lockup on a white plate.
+ *
+ * The wordmark is 256×88 and navy, so it is scaled to fit the circle's inner
+ * width and composited on white — nothing gets cropped and the colours stay
+ * true to the brand.
+ */
+async function brandAvatar(size) {
+  // Fill most of the tile so the lockup reads clearly at 32–40px, where it is
+  // actually displayed as a chat avatar.
+  const logoWidth = Math.round(size * 0.92);
+  const logo = await sharp(SRC)
+    .trim({ threshold: 10 })
+    .resize({ width: logoWidth, fit: "inside" })
+    .png()
+    .toBuffer();
+
+  return sharp({ create: { width: size, height: size, channels: 4, background: "#ffffff" } })
+    .composite([{ input: logo, gravity: "center" }])
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
 async function main() {
   await mkdir(OUT, { recursive: true });
 
@@ -119,6 +142,14 @@ async function main() {
     join(OUT, "favicon-48x48.png"),
     await squareIcon(48, { padding: 0.06, radius: 0.2, markScale: 1 }),
   );
+
+  // Chat avatar for the official MT Store account.
+  //
+  // The logo lockup is navy ink, so it needs a light plate — the same treatment
+  // as the app icon. A full-bleed white plate inside the circle means nothing is
+  // cropped when it is displayed as a round avatar.
+  await writeFile(join(OUT, "mt-store-avatar.png"), await brandAvatar(256));
+  await writeFile(join(OUT, "mt-store-avatar-96.png"), await brandAvatar(96));
 
   // Apple touch icon: no transparency, iOS rounds the corners itself.
   await writeFile(join(OUT, "apple-touch-icon.png"), await squareIcon(180, { padding: 0.16 }));

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { ApiError, apiErrorResponse, requireUser } from "@/lib/firebase/admin";
 import { listMessages, sendCustomerMessage } from "@/lib/messaging/service";
-import type { Attachment, MessageKind } from "@/lib/messaging/types";
+import type { Attachment, MessageKind, ReplyPreview } from "@/lib/messaging/types";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       kind?: MessageKind;
       text?: string;
       attachment?: Attachment;
+      replyTo?: ReplyPreview;
     };
 
     const kind = body.kind && KINDS.includes(body.kind) ? body.kind : "text";
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
       kind,
       text,
       attachment: body.attachment ? sanitizeAttachment(body.attachment) : undefined,
+      replyTo: sanitizeReply(body.replyTo),
     });
 
     return NextResponse.json({ message });
@@ -71,5 +73,19 @@ function sanitizeAttachment(input: Attachment): Attachment {
     name: String(input.name ?? "Attachment").slice(0, 200),
     contentType: String(input.contentType ?? "application/octet-stream").slice(0, 120),
     size: Number.isFinite(input.size) ? Number(input.size) : 0,
+    ...(Number.isFinite(input.duration) ? { duration: Math.round(Number(input.duration)) } : {}),
+  };
+}
+
+/** A reply is only a short quote; never trust the client for more than that. */
+function sanitizeReply(input: ReplyPreview | undefined): ReplyPreview | undefined {
+  if (!input?.messageId) return undefined;
+  return {
+    messageId: String(input.messageId).slice(0, 100),
+    senderName: String(input.senderName ?? "").slice(0, 80),
+    kind: (["text", "order", "image", "video", "audio", "file"] as MessageKind[]).includes(input.kind)
+      ? input.kind
+      : "text",
+    snippet: String(input.snippet ?? "").slice(0, 140),
   };
 }

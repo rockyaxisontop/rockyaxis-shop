@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Facebook, Instagram, Mail, MapPin, Music2, Phone, Youtube } from "lucide-react";
+import { Facebook, Instagram, Mail, MapPin, MessageCircle, Music2, Youtube } from "lucide-react";
 import mtStoreLogo from "../mt-store-white.png";
 
 import { useCurrency } from "@/components/currency-provider";
@@ -80,10 +80,10 @@ export function SiteFooter() {
                   <span className="block text-xs">Delivering across {countryName}</span>
                 </span>
               </p>
-              <a className="flex items-center gap-2.5 hover:text-brand" href="tel:+9779714501791">
-                <Phone className="size-4 shrink-0 text-brand" />
-                +977-9714501791
-              </a>
+              <Link href="/message" className="flex items-center gap-2.5 hover:text-brand">
+                <MessageCircle className="size-4 shrink-0 text-brand" />
+                Chat with us
+              </Link>
               <a className="flex items-center gap-2.5 hover:text-brand" href="mailto:support@mtstore.com">
                 <Mail className="size-4 shrink-0 text-brand" />
                 support@mtstore.com

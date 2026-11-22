@@ -1,19 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileText, ImageIcon, Link2, Mic, Paperclip, Send, Video, X } from "lucide-react";
+import { FileText, ImageIcon, Link2, Mic, Reply, Video, X } from "lucide-react";
 
 import { messageApi, adminApi } from "@/lib/messaging/client";
 import { useCurrency } from "@/components/currency-provider";
 import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice, storePrice } from "@/lib/discount";
 import { formatMoney } from "@/lib/format";
-import type { Attachment, MessageKind, OrderPayload, PublicMessage } from "@/lib/messaging/types";
+import type { Attachment, OrderPayload, PublicMessage } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
 /** Official MT Store identity, shown exactly like WhatsApp's business account. */
 export const MT_STORE = {
   name: "MT Store",
-  photo: "/icon-192.png",
+  // Square brand avatar built from the real logo (see scripts/generate-icons.mjs).
+  photo: "/mt-store-avatar.png",
   tagline: "Official store · usually replies in a few minutes",
 };
 
@@ -155,29 +156,58 @@ type BubbleProps = {
   /** Admin viewing a customer thread. */
   viewer: "customer" | "admin";
   showAvatar: boolean;
+  /** Called when the viewer chooses to reply to this message. */
+  onReply?: (message: PublicMessage) => void;
 };
 
-export function MessageBubble({ message, mine, showAvatar }: BubbleProps) {
+export function MessageBubble({ message, mine, showAvatar, onReply }: BubbleProps) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const isOrder = message.kind === "order";
   const photo = mine ? message.senderPhoto : message.senderPhoto ?? (message.senderRole === "admin" ? MT_STORE.photo : null);
+
+  // Long-press (600ms) on touch, double-click on desktop — the Messenger habit.
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function startPress() {
+    if (!onReply) return;
+    pressTimer.current = setTimeout(() => onReply(message), 600);
+  }
+  function endPress() {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    pressTimer.current = null;
+  }
 
   const time = formatTime(message.createdAt);
   const readLabel =
     mine && message.readAt ? "Read" : mine && message.deliveredAt ? "Delivered" : mine ? "Sent" : null;
 
   return (
-    <div className={cn("flex w-full gap-2", mine ? "justify-end" : "justify-start")}>
+    <div className={cn("group flex w-full items-end gap-1", mine ? "justify-end" : "justify-start")}>
+      {mine && onReply ? (
+        <button
+          type="button"
+          onClick={() => onReply(message)}
+          aria-label="Reply to this message"
+          title="Reply"
+          className="mb-4 grid size-7 shrink-0 place-items-center rounded-full text-ink-soft opacity-60 transition hover:bg-surface-2 hover:text-brand focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+        >
+          <Reply className="size-3.5" />
+        </button>
+      ) : null}
+
       {!mine ? (
         <div className="w-7 shrink-0">
           {showAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photo ?? MT_STORE.photo} alt="" className="size-7 rounded-full object-cover" />
+            <img
+              src={photo ?? MT_STORE.photo}
+              alt=""
+              className="size-7 rounded-full border border-border bg-white object-contain p-0.5"
+            />
           ) : null}
         </div>
       ) : null}
 
-      <div className={cn("max-w-[85%] sm:max-w-[75%]", mine ? "items-end" : "items-start")}>
+      <div className={cn("min-w-0 max-w-[85%] sm:max-w-[75%]", mine ? "items-end" : "items-start")}>
         {!mine && showAvatar ? (
           <p className="mb-0.5 px-1 text-[10px] font-bold text-ink-soft">
             {message.senderRole === "admin" ? MT_STORE.name : message.senderName}
@@ -185,6 +215,10 @@ export function MessageBubble({ message, mine, showAvatar }: BubbleProps) {
         ) : null}
 
         <div
+          onPointerDown={startPress}
+          onPointerUp={endPress}
+          onPointerLeave={endPress}
+          onDoubleClick={() => onReply?.(message)}
           className={cn(
             "overflow-hidden rounded-2xl text-sm shadow-sm",
             mine
@@ -196,6 +230,21 @@ export function MessageBubble({ message, mine, showAvatar }: BubbleProps) {
         >
           {isOrder && message.order ? (
             <OrderCard order={message.order} mine={mine} onDark={mine} />
+          ) : null}
+
+          {/* Quoted message this one answers. */}
+          {message.replyTo ? (
+            <div
+              className={cn(
+                "mx-2 mt-2 rounded-lg border-l-2 px-2 py-1 text-[11px]",
+                mine ? "border-white/80 bg-white/15 text-white/90" : "border-brand bg-brand-tint text-ink-soft",
+              )}
+            >
+              <p className="text-[10px] font-bold">{message.replyTo.senderName}</p>
+              <p className="line-clamp-2">
+                {message.replyTo.kind === "order" ? "Order details" : message.replyTo.snippet || "Message"}
+              </p>
+            </div>
           ) : null}
 
           {message.attachment ? (
@@ -211,7 +260,7 @@ export function MessageBubble({ message, mine, showAvatar }: BubbleProps) {
 
         <p
           className={cn(
-            "mt-0.5 flex items-center gap-1 px-1 text-[10px] text-ink-soft",
+            "mt-0.5 flex flex-wrap items-center gap-1 px-1 text-[10px] text-ink-soft",
             mine ? "justify-end" : "justify-start",
           )}
         >
@@ -219,6 +268,18 @@ export function MessageBubble({ message, mine, showAvatar }: BubbleProps) {
           {readLabel ? <span className="text-brand">· {readLabel}</span> : null}
         </p>
       </div>
+
+      {!mine && onReply ? (
+        <button
+          type="button"
+          onClick={() => onReply(message)}
+          aria-label="Reply to this message"
+          title="Reply"
+          className="mb-4 grid size-7 shrink-0 place-items-center rounded-full text-ink-soft opacity-60 transition hover:bg-surface-2 hover:text-brand focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+        >
+          <Reply className="size-3.5" />
+        </button>
+      ) : null}
 
       {lightbox ? (
         <div
@@ -429,127 +490,6 @@ function AttachmentView({ attachment, onOpen }: { attachment: Attachment; onOpen
 /* -------------------------------------------------------------------------- */
 /* Composer                                                                   */
 /* -------------------------------------------------------------------------- */
-
-/**
- * Message composer with attachments.
- *
- * Files are uploaded straight to Storage via a short-lived signed URL from our
- * API, so big videos never pass through the app server.
- */
-export function MessageComposer({
-  onSend,
-  disabled,
-}: {
-  onSend: (input: { kind: MessageKind; text?: string; attachment?: Attachment }) => Promise<void>;
-  disabled?: boolean;
-}) {
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  async function submit() {
-    const value = text.trim();
-    if (!value || sending) return;
-    setSending(true);
-    setError(null);
-    try {
-      await onSend({ kind: "text", text: value });
-      setText("");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Couldn't send. Try again.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function attach(file: File) {
-    setUploading(true);
-    setError(null);
-    try {
-      const ticket = await messageApi.uploadUrl({
-        name: file.name,
-        contentType: file.type || "application/octet-stream",
-        size: file.size,
-      });
-
-      const put = await fetch(ticket.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      });
-      if (!put.ok) throw new Error("Upload failed. Try a smaller file.");
-
-      await onSend({
-        kind: ticket.kind,
-        text: text.trim() || undefined,
-        attachment: {
-          url: ticket.url,
-          name: file.name,
-          contentType: file.type || "application/octet-stream",
-          size: file.size,
-        },
-      });
-      setText("");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Couldn't upload that file.");
-    } finally {
-      setUploading(false);
-      if (fileInput.current) fileInput.current.value = "";
-    }
-  }
-
-  return (
-    <div className="border-t border-border bg-white p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-      {error ? <p className="px-2 pb-1 text-[11px] text-destructive">{error}</p> : null}
-      <div className="flex items-end gap-1.5">
-        <button
-          type="button"
-          onClick={() => fileInput.current?.click()}
-          disabled={disabled || uploading}
-          aria-label="Attach a file"
-          className="grid size-10 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-surface-2 hover:text-brand disabled:opacity-50"
-        >
-          {uploading ? <Paperclip className="size-5 animate-pulse" /> : <Paperclip className="size-5" />}
-        </button>
-        <input
-          ref={fileInput}
-          type="file"
-          hidden
-          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void attach(file);
-          }}
-        />
-        <textarea
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              void submit();
-            }
-          }}
-          rows={1}
-          placeholder="Write a message…"
-          disabled={disabled}
-          className="max-h-32 min-h-10 flex-1 resize-none rounded-2xl border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15"
-        />
-        <button
-          type="button"
-          onClick={() => void submit()}
-          disabled={disabled || sending || !text.trim()}
-          aria-label="Send message"
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-brand text-white transition hover:brightness-110 disabled:opacity-40"
-        >
-          <Send className="size-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /** Small helper for the icons used by the file picker hint. */
 export const AttachmentIcons = { ImageIcon, Video, FileText, Mic };
