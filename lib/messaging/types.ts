@@ -40,6 +40,8 @@ export type ReplyPreview = {
 
 export type PublicMessage = {
   id: string;
+  /** Echoed back by the server so an optimistic copy can be reconciled. */
+  clientId?: string;
   conversationId: string;
   senderId: string;
   senderRole: "customer" | "admin";
@@ -132,5 +134,22 @@ export type AdminCustomerProfile = {
     currency: string;
     itemCount: number;
     createdAt: string | null;
+    status: ChatOrderStatus;
   }>;
+};
+
+/** Lifecycle of an order placed from the cart into the chat. */
+export type ChatOrderStatus = "sent" | "awaiting_payment" | "confirmed" | "cancelled";
+
+export type ChatOrder = {
+  reference: string;
+  customerUid: string;
+  status: ChatOrderStatus;
+  currency: string;
+  total: number;
+  itemCount: number;
+  lineIds: string[];
+  createdAt: string | null;
+  updatedAt: string | null;
+  confirmedAt: string | null;
 };

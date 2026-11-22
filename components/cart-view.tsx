@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 import { Gift, House, MapPin, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
+import {
+  CartOrderStatus,
+  CartOrderSummary,
+  cartLineKey,
+  useCartOrderState,
+} from "@/components/messaging/cart-order-status";
 import { useAuth } from "@/components/providers";
 import { useFreebieCampaigns } from "@/components/freebie-panel";
 import { Button } from "@/components/ui/button";
@@ -27,6 +33,8 @@ export function CartView() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
   const { campaigns } = useFreebieCampaigns(Boolean(user));
+  // Must be called unconditionally, before any early return.
+  const { orders: chatOrders, forLine } = useCartOrderState();
 
   useEffect(() => {
     if (!user) {
@@ -119,8 +127,10 @@ export function CartView() {
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
           {/* Items */}
-          <ul className="flex flex-col gap-3">
-            {items.map((item) => {
+          <div className="flex flex-col gap-3">
+            <CartOrderSummary orders={chatOrders} />
+            <ul className="flex flex-col gap-3">
+              {items.map((item) => {
               const id = cartItemId(item);
               const campaign = campaigns[item.productId];
               const isFree = campaign?.status === "completed";
@@ -162,6 +172,16 @@ export function CartView() {
                           .join(" · ")}
                       </p>
                     ) : null}
+
+                    {/* Order state for this exact row, once it's been sent to the chat. */}
+                    {(() => {
+                      const order = forLine(cartLineKey(item.productId, item.options));
+                      return order ? (
+                        <div className="mt-1">
+                          <CartOrderStatus status={order.status} />
+                        </div>
+                      ) : null;
+                    })()}
 
                     <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1.5">
                       {isFree ? (
@@ -220,7 +240,8 @@ export function CartView() {
                 </li>
               );
             })}
-          </ul>
+            </ul>
+            </div>
 
           {/* Summary */}
           <aside className="h-fit lg:sticky lg:top-24">

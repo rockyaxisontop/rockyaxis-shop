@@ -5,8 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageCircle, ShoppingBag, X } from "lucide-react";
 
-import { MtStoreIdentity } from "@/components/messaging/mt-store-identity";
-
 import { cn } from "@/lib/utils";
 
 /**
@@ -70,14 +68,9 @@ export function FloatingOrderContact() {
           </div>
 
           <div className="p-3">
-            <p className="text-xs leading-5 text-ink-soft">
-              Send your order or ask a question — everything happens right here on our site.
-            </p>
-            {/* Identity + socials, so customers can verify who they are talking to. */}
-            <MtStoreIdentity compact />
             <Link
               href="/message"
-              className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand text-sm font-bold text-white transition hover:brightness-110"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand text-sm font-bold text-white transition hover:brightness-110"
             >
               <MessageCircle className="size-4" />
               Open messages
@@ -87,7 +80,7 @@ export function FloatingOrderContact() {
               className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border-border text-xs font-semibold text-ink transition hover:border-brand hover:text-brand"
             >
               <ShoppingBag className="size-3.5" />
-              View my cart
+              View cart
             </Link>
           </div>
         </section>

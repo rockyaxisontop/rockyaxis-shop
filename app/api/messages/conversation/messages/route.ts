@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       text?: string;
       attachment?: Attachment;
       replyTo?: ReplyPreview;
+      clientId?: string;
     };
 
     const kind = body.kind && KINDS.includes(body.kind) ? body.kind : "text";
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
       text,
       attachment: body.attachment ? sanitizeAttachment(body.attachment) : undefined,
       replyTo: sanitizeReply(body.replyTo),
+      clientId: typeof body.clientId === "string" ? body.clientId.slice(0, 60) : undefined,
     });
 
     return NextResponse.json({ message });

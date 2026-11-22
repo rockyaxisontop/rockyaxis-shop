@@ -29,7 +29,7 @@ import { MessageComposer } from "@/components/messaging/composer";
 import { adminApi } from "@/lib/messaging/client";
 import { CustomerInfoDrawer } from "@/components/admin/customer-info-drawer";
 import { EnablePushButton } from "@/components/messaging/enable-push-button";
-import type { AdminStats, PublicConversation, PublicMessage } from "@/lib/messaging/types";
+import type { AdminStats, ChatOrderStatus, PublicConversation, PublicMessage } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "unreplied" | "unread" | "replied" | "newest" | "active";
@@ -405,13 +405,36 @@ function AdminChat({
   onBack: () => void;
   onChanged: () => void;
 }) {
-  const { messages, loading, hasMore, loadOlder, merge } = useLiveMessages({
+  const { messages, loading, hasMore, loadOlder, merge, sendOptimistic, dropOptimistic } = useLiveMessages({
     conversationUid: conversation.id,
     admin: true,
   });
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [replyTo, setReplyTo] = useState<PublicMessage | null>(null);
+  const [orderStatuses, setOrderStatuses] = useState<Record<string, ChatOrderStatus>>({});
+
+  // Order statuses come from the customer's order records, keyed by reference.
+  const loadOrderStatuses = useCallback(async () => {
+    try {
+      const profile = await adminApi.profile(conversation.id);
+      const next: Record<string, ChatOrderStatus> = {};
+      for (const order of profile.orders) next[order.reference] = order.status;
+      setOrderStatuses(next);
+    } catch {
+      /* status is informative; never block the chat on it */
+    }
+  }, [conversation.id]);
+
+  useEffect(() => {
+    void loadOrderStatuses();
+  }, [loadOrderStatuses]);
+
+  async function changeOrderStatus(reference: string, next: ChatOrderStatus) {
+    await adminApi.setOrderStatus(reference, next);
+    setOrderStatuses((current) => ({ ...current, [reference]: next }));
+    onChanged();
+  }
 
   // Opening a thread clears its unread badge for the admin.
   useEffect(() => {
@@ -427,6 +450,21 @@ function AdminChat({
     const { message } = await adminApi.reply(conversation.id, input);
     merge([message]);
     onChanged();
+  }
+
+  /** Admin messages appear instantly too. */
+  function optimistic(input: Omit<Parameters<typeof adminApi.reply>[1], "clientId">) {
+    return sendOptimistic({
+      conversationId: conversation.id,
+      senderId: "admin-me",
+      senderRole: "admin",
+      senderName: "MT Store",
+      senderPhoto: "/mt-store-avatar.png",
+      kind: input.kind,
+      text: input.text ?? "",
+      attachment: input.attachment,
+      replyTo: input.replyTo,
+    });
   }
 
   return (
@@ -514,13 +552,23 @@ function AdminChat({
                 viewer="admin"
                 showAvatar={!previous || previous.senderId !== message.senderId}
                 onReply={setReplyTo}
+                orderStatus={
+                  message.order ? (orderStatuses[message.order.reference] ?? "sent") : undefined
+                }
+                onOrderStatusChange={changeOrderStatus}
               />
             </div>
           );
         })}
       </div>
 
-      <MessageComposer onSend={reply} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
+      <MessageComposer
+        onSend={reply}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
+        onOptimistic={optimistic}
+        onRollback={dropOptimistic}
+      />
       <p className="border-t border-border bg-white px-3 py-1 text-center text-[10px] text-ink-soft">
         Replying as {MT_STORE.name} · your reply appears instantly for the customer
       </p>

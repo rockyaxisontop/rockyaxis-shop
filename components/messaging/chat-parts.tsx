@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FileText, ImageIcon, Link2, Mic, Reply, Video, X } from "lucide-react";
+import { CheckCircle2, Download, FileText, ImageIcon, Link2, Loader2, Mic, Reply, Video, X } from "lucide-react";
 
 import { messageApi, adminApi } from "@/lib/messaging/client";
 import { useCurrency } from "@/components/currency-provider";
 import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice, storePrice } from "@/lib/discount";
 import { formatMoney } from "@/lib/format";
-import type { Attachment, OrderPayload, PublicMessage } from "@/lib/messaging/types";
+import type { Attachment, ChatOrderStatus, OrderPayload, PublicMessage } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
 /** Official MT Store identity, shown exactly like WhatsApp's business account. */
@@ -50,10 +50,44 @@ export function useLiveMessages({
     setMessages((current) => {
       const map = new Map(current.map((m) => [m.id, m]));
       for (const message of incoming) map.set(message.id, message);
+      // A confirmed copy replaces its optimistic twin (same clientId).
+      const confirmed = new Set(incoming.map((m) => m.clientId).filter(Boolean));
+      for (const [id, message] of map) {
+        if (message.id.startsWith("optimistic-") && message.clientId && confirmed.has(message.clientId)) {
+          map.delete(id);
+        }
+      }
       return [...map.values()].sort(
         (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
     });
+  }, []);
+
+  /**
+   * Shows a message immediately while the request is in flight.
+   * The returned id is replaced once the server copy arrives, so the customer
+   * never waits 1–2 seconds for their own text to appear.
+   */
+  const sendOptimistic = useCallback(
+    (draft: Omit<PublicMessage, "id" | "createdAt" | "deliveredAt" | "readAt">) => {
+      const clientId = `c-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const optimistic: PublicMessage = {
+        ...draft,
+        id: `optimistic-${clientId}`,
+        clientId,
+        createdAt: new Date().toISOString(),
+        deliveredAt: null,
+        readAt: null,
+      };
+      merge([optimistic]);
+      return clientId;
+    },
+    [merge],
+  );
+
+  /** Removes a draft whose send failed. */
+  const dropOptimistic = useCallback((clientId: string) => {
+    setMessages((current) => current.filter((m) => !(m.id.startsWith("optimistic-") && m.clientId === clientId)));
   }, []);
 
   const load = useCallback(
@@ -104,7 +138,7 @@ export function useLiveMessages({
     }
   }
 
-  return { messages, loading, error, hasMore, loadOlder, merge };
+  return { messages, loading, error, hasMore, loadOlder, merge, sendOptimistic, dropOptimistic };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -159,10 +193,21 @@ type BubbleProps = {
   showAvatar: boolean;
   /** Called when the viewer chooses to reply to this message. */
   onReply?: (message: PublicMessage) => void;
+  /** Admin: current status of this order, if it is an order message. */
+  orderStatus?: ChatOrderStatus;
+  /** Admin: change that status. */
+  onOrderStatusChange?: (reference: string, next: ChatOrderStatus) => Promise<void>;
 };
 
-export function MessageBubble({ message, mine, showAvatar, onReply }: BubbleProps) {
-  const [lightbox, setLightbox] = useState<string | null>(null);
+export function MessageBubble({
+  message,
+  mine,
+  showAvatar,
+  onReply,
+  orderStatus,
+  onOrderStatusChange,
+}: BubbleProps) {
+  const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null);
   const isOrder = message.kind === "order";
   const photo = mine ? message.senderPhoto : message.senderPhoto ?? (message.senderRole === "admin" ? MT_STORE.photo : null);
 
@@ -230,7 +275,17 @@ export function MessageBubble({ message, mine, showAvatar, onReply }: BubbleProp
           )}
         >
           {isOrder && message.order ? (
-            <OrderCard order={message.order} mine={mine} onDark={mine} />
+            <OrderCard
+              order={message.order}
+              mine={mine}
+              onDark={mine}
+              status={orderStatus}
+              onStatusChange={
+                onOrderStatusChange
+                  ? (next) => onOrderStatusChange(message.order!.reference, next)
+                  : undefined
+              }
+            />
           ) : null}
 
           {/* Quoted message this one answers. */}
@@ -249,7 +304,15 @@ export function MessageBubble({ message, mine, showAvatar, onReply }: BubbleProp
           ) : null}
 
           {message.attachment ? (
-            <AttachmentView attachment={message.attachment} onOpen={setLightbox} />
+            <AttachmentView
+              attachment={message.attachment}
+              onOpen={(url) =>
+                setLightbox({
+                  url,
+                  name: message.attachment?.name || `mt-store-${message.id}.jpg`,
+                })
+              }
+            />
           ) : null}
 
           {message.text && !isOrder ? (
@@ -287,12 +350,40 @@ export function MessageBubble({ message, mine, showAvatar, onReply }: BubbleProp
           role="dialog"
           aria-label="Attachment preview"
           onClick={() => setLightbox(null)}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-3 bg-black/85 p-4"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-lg" />
+          <img
+            src={lightbox.url}
+            alt={lightbox.name}
+            className="max-h-[calc(100dvh-8rem)] max-w-full rounded-lg object-contain"
+            onClick={(event) => event.stopPropagation()}
+          />
+
+          <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+            <a
+              href={lightbox.url}
+              download={lightbox.name || "mt-store-image"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-ink shadow-lg"
+            >
+              <Download className="size-4" />
+              Save image
+            </a>
+            <button
+              type="button"
+              onClick={() => setLightbox(null)}
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white/15 px-4 text-sm font-bold text-white"
+            >
+              <X className="size-4" />
+              Close
+            </button>
+          </div>
+
           <button
             type="button"
+            onClick={() => setLightbox(null)}
             aria-label="Close preview"
             className="absolute top-4 right-4 grid size-10 place-items-center rounded-full bg-white/15 text-white"
           >
@@ -315,11 +406,16 @@ export function OrderCard({
   order,
   mine,
   onDark,
+  status,
+  onStatusChange,
 }: {
   order: OrderPayload;
   mine: boolean;
   /** White text on the brand-coloured bubble. */
   onDark: boolean;
+  status?: ChatOrderStatus;
+  /** Admin only: mark the order accepted / successful / cancelled. */
+  onStatusChange?: (next: ChatOrderStatus) => Promise<void> | void;
 }) {
   const { currency } = useCurrency();
 
@@ -347,6 +443,11 @@ export function OrderCard({
       >
         Order {order.reference}
       </p>
+      {status ? (
+        <div className="mt-1">
+          <OrderStatusBadge status={status} />
+        </div>
+      ) : null}
       <ul className={cn("mt-2 flex flex-col gap-2.5", onDark ? "text-white" : "text-ink")}>
         {order.lines.map((line, index) => {
           const unitPay = storePrice(line.price, currency);
@@ -448,7 +549,84 @@ export function OrderCard({
           ) : null}
         </span>
       </div>
+
+      {/* Admin's actions live on the order itself, inside the conversation. */}
+      {onStatusChange && status ? (
+        <div className={cn("mt-2 flex flex-wrap gap-1.5 border-t pt-2", onDark ? "border-white/25" : "border-border")}>
+          {status === "sent" ? (
+            <StatusAction label="Accept order" onClick={() => onStatusChange("awaiting_payment")} />
+          ) : null}
+          {status !== "confirmed" && status !== "cancelled" ? (
+            <StatusAction
+              label="Order success ✓"
+              tone="success"
+              onClick={() => onStatusChange("confirmed")}
+            />
+          ) : null}
+          {status !== "confirmed" && status !== "cancelled" ? (
+            <StatusAction label="Cancel" tone="danger" onClick={() => onStatusChange("cancelled")} />
+          ) : null}
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+const STATUS_LABELS: Record<ChatOrderStatus, { label: string; className: string }> = {
+  sent: { label: "Order placed", className: "bg-[#fff1e5] text-[#b34a12]" },
+  awaiting_payment: { label: "Awaiting payment", className: "bg-brand-tint text-brand" },
+  confirmed: { label: "Order success", className: "bg-stock-bg text-stock" },
+  cancelled: { label: "Cancelled", className: "bg-surface-2 text-ink-soft" },
+};
+
+/** Status pill shared by the chat, the cart and the admin panel. */
+export function OrderStatusBadge({ status }: { status: ChatOrderStatus }) {
+  const meta = STATUS_LABELS[status] ?? STATUS_LABELS.sent;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase",
+        meta.className,
+      )}
+    >
+      {status === "confirmed" ? <CheckCircle2 className="size-3" /> : null}
+      {meta.label}
+    </span>
+  );
+}
+
+function StatusAction({
+  label,
+  onClick,
+  tone = "default",
+}: {
+  label: string;
+  onClick: () => Promise<void> | void;
+  tone?: "default" | "success" | "danger";
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => {
+        setBusy(true);
+        Promise.resolve(onClick())
+          .catch(() => {})
+          .finally(() => setBusy(false));
+      }}
+      className={cn(
+        "inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-[10px] font-extrabold transition disabled:opacity-50",
+        tone === "success"
+          ? "bg-stock text-white hover:brightness-110"
+          : tone === "danger"
+            ? "border border-border text-ink-soft hover:border-destructive/40 hover:text-destructive"
+            : "bg-brand text-white hover:brightness-110",
+      )}
+    >
+      {busy ? <Loader2 className="size-3 animate-spin" /> : null}
+      {label}
+    </button>
   );
 }
 

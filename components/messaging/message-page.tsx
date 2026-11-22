@@ -37,7 +37,7 @@ export function MessagePage() {
   const [error, setError] = useState<string | null>(null);
   const orderSent = useRef(false);
 
-  const { messages, loading: messagesLoading, hasMore, loadOlder, merge } = useLiveMessages({
+  const { messages, loading: messagesLoading, hasMore, loadOlder, merge, sendOptimistic, dropOptimistic } = useLiveMessages({
     conversationUid: user?.uid ?? null,
     admin: false,
   });
@@ -125,6 +125,21 @@ export function MessagePage() {
   async function send(input: Parameters<typeof messageApi.send>[0]) {
     const { message } = await messageApi.send(input);
     merge([message]);
+  }
+
+  /** Paints the bubble before the network call so the chat feels instant. */
+  function optimistic(input: Omit<Parameters<typeof messageApi.send>[0], "clientId">) {
+    return sendOptimistic({
+      conversationId: user!.uid,
+      senderId: user!.uid,
+      senderRole: "customer",
+      senderName: user!.displayName ?? user!.email?.split("@")[0] ?? "You",
+      senderPhoto: user!.photoURL ?? undefined,
+      kind: input.kind,
+      text: input.text ?? "",
+      attachment: input.attachment,
+      replyTo: input.replyTo,
+    });
   }
 
   if (loading || state === "loading" || !user) {
@@ -237,7 +252,13 @@ export function MessagePage() {
         Messages are seen by the MT Store team
       </div>
 
-      <MessageComposer onSend={send} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
+      <MessageComposer
+        onSend={send}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
+        onOptimistic={optimistic}
+        onRollback={dropOptimistic}
+      />
 
       {/* Offered only after the customer has actually sent a couple of messages
           AND answered the notification prompt, so the two never collide. */}

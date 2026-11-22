@@ -18,12 +18,18 @@ export function MessageComposer({
   disabled,
   replyTo,
   onCancelReply,
+  onOptimistic,
+  onRollback,
 }: {
   onSend: (input: SendInput) => Promise<void>;
   disabled?: boolean;
   /** The message being replied to, if any. */
   replyTo?: PublicMessage | null;
   onCancelReply?: () => void;
+  /** Render the message before the request completes; returns a draft id. */
+  onOptimistic?: (input: Omit<SendInput, "clientId">) => string | undefined;
+  /** Remove a draft whose send failed. */
+  onRollback?: (clientId: string) => void;
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -49,13 +55,24 @@ export function MessageComposer({
   async function submit() {
     const value = text.trim();
     if (!value || sending) return;
+
+    // Clear the box and show the message immediately; the network happens behind
+    // the scenes. If it fails, the bubble is removed and the text restored.
+    const clientId = onOptimistic?.({
+      kind: "text",
+      text: value,
+      replyTo: replyPayload,
+    });
+    setText("");
+    onCancelReply?.();
     setSending(true);
     setError(null);
+
     try {
-      await onSend({ kind: "text", text: value, replyTo: replyPayload });
-      setText("");
-      onCancelReply?.();
+      await onSend({ kind: "text", text: value, replyTo: replyPayload, clientId });
     } catch (cause) {
+      if (clientId) onRollback?.(clientId);
+      setText(value);
       setError(cause instanceof Error ? cause.message : "Couldn't send. Try again.");
     } finally {
       setSending(false);
@@ -158,6 +175,10 @@ export function MessageComposer({
           }}
         />
 
+        {/* One attachment button: documents. */}
+        <ComposerButton label="Attach a file" onClick={() => fileInput.current?.click()} disabled={busy}>
+          <FileText className="size-5" />
+        </ComposerButton>
         {/* One media button: photos and videos in the same picker. */}
         <ComposerButton
           label="Send a photo or video"
@@ -165,10 +186,6 @@ export function MessageComposer({
           disabled={busy}
         >
           {uploading ? <Loader2 className="size-5 animate-spin" /> : <ImageIcon className="size-5" />}
-        </ComposerButton>
-        {/* One attachment button: documents. */}
-        <ComposerButton label="Attach a file" onClick={() => fileInput.current?.click()} disabled={busy}>
-          <FileText className="size-5" />
         </ComposerButton>
 
         <textarea

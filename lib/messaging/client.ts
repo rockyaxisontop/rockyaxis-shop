@@ -6,6 +6,8 @@ import type {
   AdminCustomerProfile,
   AdminStats,
   Attachment,
+  ChatOrder,
+  ChatOrderStatus,
   MessageKind,
   OrderPayload,
   PublicConversation,
@@ -39,6 +41,8 @@ export type SendInput = {
   order?: OrderPayload;
   /** Set when answering a specific message. */
   replyTo?: ReplyPreview;
+  /** Client-generated id, echoed back so an optimistic copy can be reconciled. */
+  clientId?: string;
 };
 
 /** Customer-side messaging API. */
@@ -64,6 +68,15 @@ export const messageApi = {
     }),
 
   markRead: () => call<{ ok: true }>("/api/messages/read", { method: "POST" }),
+
+  /** This customer's chat orders and their statuses. */
+  orders: () => call<{ orders: ChatOrder[] }>("/api/messages/orders"),
+
+  setOrderStatus: (reference: string, status: ChatOrderStatus) =>
+    call<{ order: ChatOrder }>(`/api/messages/orders/${encodeURIComponent(reference)}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    }),
 
   uploadUrl: (file: { name: string; contentType: string; size: number }) =>
     call<
@@ -92,6 +105,13 @@ export const adminApi = {
 
   markRead: (uid: string) =>
     call<{ ok: true }>(`/api/admin/conversations/${encodeURIComponent(uid)}/read`, { method: "POST" }),
+
+  /** Admin: move an order to another status. */
+  setOrderStatus: (reference: string, status: ChatOrderStatus) =>
+    call<{ order: ChatOrder }>(`/api/admin/orders/${encodeURIComponent(reference)}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    }),
 
   /** Full profile the customer filled in, plus their orders. */
   profile: (uid: string) =>

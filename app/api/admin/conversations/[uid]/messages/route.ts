@@ -34,6 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ uid
       text?: string;
       attachment?: Attachment;
       replyTo?: ReplyPreview;
+      clientId?: string;
     };
 
     const kind = body.kind && KINDS.includes(body.kind) ? body.kind : "text";
@@ -44,6 +45,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ uid
       kind,
       text,
       attachment: body.attachment,
+      clientId: typeof body.clientId === "string" ? body.clientId.slice(0, 60) : undefined,
       replyTo: body.replyTo?.messageId
         ? {
             messageId: String(body.replyTo.messageId).slice(0, 100),

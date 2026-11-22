@@ -4,9 +4,12 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { ApiError, getAdminDb, type AuthUser } from "@/lib/firebase/admin";
 
+import { recordOrder, getOrder } from "./orders";
+
 import type {
   AdminStats,
   Attachment,
+  ChatOrderStatus,
   ConversationCustomer,
   MessageKind,
   OrderPayload,
@@ -111,6 +114,7 @@ function toMessage(conversationId: string, id: string, data: FirebaseFirestore.D
     attachment: (data.attachment as Attachment) ?? undefined,
     order: (data.order as OrderPayload) ?? undefined,
     replyTo: (data.replyTo as ReplyPreview) ?? undefined,
+    clientId: (data.clientId as string) ?? undefined,
     createdAt: toIso(data.createdAt) ?? new Date().toISOString(),
     deliveredAt: toIso(data.deliveredAt),
     readAt: toIso(data.readAt),
@@ -232,6 +236,7 @@ type MessageInput = {
   attachment?: Attachment;
   order?: OrderPayload;
   replyTo?: ReplyPreview;
+  clientId?: string;
 };
 
 function buildMessage(input: MessageInput) {
@@ -245,6 +250,7 @@ function buildMessage(input: MessageInput) {
     attachment: input.attachment ?? null,
     order: input.order ?? null,
     replyTo: input.replyTo ? stripUndefined(input.replyTo) : null,
+    clientId: input.clientId ?? null,
     deliveredAt: null,
     readAt: null,
   };
@@ -298,6 +304,7 @@ export async function sendCustomerMessage(
     attachment?: Attachment;
     order?: OrderPayload;
     replyTo?: ReplyPreview;
+    clientId?: string;
   },
 ): Promise<PublicMessage> {
   await getOrCreateMyConversation(user);
@@ -314,6 +321,7 @@ export async function sendCustomerMessage(
     attachment: input.attachment,
     order: input.order,
     replyTo: input.replyTo,
+    clientId: input.clientId,
   });
 
   const snapshot = await db().collection(CONVERSATIONS).doc(user.uid).collection("messages").doc(id).get();
@@ -380,6 +388,16 @@ export async function sendOrderMessage(
     .doc(id)
     .update({ orderToken: clientToken });
   await conversationRef.update({ lastOrderToken: clientToken, lastOrderAt: FieldValue.serverTimestamp() });
+
+  // Track the order's lifecycle so both sides can see its status.
+  await recordOrder({
+    reference: order.reference,
+    customerUid: user.uid,
+    currency: order.currency,
+    total: Object.values(order.totals)[0] ?? 0,
+    itemCount: order.lines.reduce((sum, line) => sum + line.quantity, 0),
+    lineIds: order.lines.map((line) => `${line.productId}|${JSON.stringify(line.options ?? {})}`),
+  }).catch(() => {});
   const snapshot = await conversationRef.collection("messages").doc(id).get();
 
   // An order is the alert admins most need to see, even with the tab closed.
@@ -516,6 +534,7 @@ export type AdminCustomerProfile = {
     currency: string;
     itemCount: number;
     createdAt: string | null;
+    status: ChatOrderStatus;
   }>;
 };
 
@@ -548,8 +567,17 @@ export async function getCustomerProfileForAdmin(uid: string): Promise<AdminCust
         currency: order.currency,
         itemCount: order.lines.reduce((sum, line) => sum + line.quantity, 0),
         createdAt: toIso(doc.data().createdAt),
+        status: "sent" as ChatOrderStatus,
       };
     });
+
+  // Merge the real lifecycle status of each referenced order.
+  const statuses = await Promise.all(
+    orders.map((order) => getOrder(order.reference).catch(() => null)),
+  );
+  for (const [index, record] of statuses.entries()) {
+    if (record) orders[index].status = record.status;
+  }
 
   return {
     uid,
@@ -580,7 +608,7 @@ export async function getCustomerProfileForAdmin(uid: string): Promise<AdminCust
 export async function sendAdminMessage(
   admin: AuthUser,
   conversationUid: string,
-  input: { kind: MessageKind; text?: string; attachment?: Attachment; replyTo?: ReplyPreview },
+  input: { kind: MessageKind; text?: string; attachment?: Attachment; replyTo?: ReplyPreview; clientId?: string },
 ): Promise<PublicMessage> {
   const conversation = await db().collection(CONVERSATIONS).doc(conversationUid).get();
   if (!conversation.exists) throw new ApiError("Conversation not found.", 404);
@@ -594,6 +622,7 @@ export async function sendAdminMessage(
     text: input.text ?? "",
     attachment: input.attachment,
     replyTo: input.replyTo,
+    clientId: input.clientId,
   });
 
   const snapshot = await db().collection(CONVERSATIONS).doc(conversationUid).collection("messages").doc(id).get();

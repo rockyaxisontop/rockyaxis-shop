@@ -16,6 +16,12 @@ import {
 } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
+import {
+  CartOrderStatus,
+  CartOrderSummary,
+  cartLineKey,
+  useCartOrderState,
+} from "@/components/messaging/cart-order-status";
 import { useAuth } from "@/components/providers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice, storePrice } from "@/lib/discount";
@@ -43,6 +49,8 @@ export function CheckoutView() {
   }, [user]);
 
   // One total, in the visitor's currency — cart prices are USD internally.
+  const { orders: chatOrders, forLine } = useCartOrderState();
+
   const totals = useMemo(
     () => ({
       list: items.reduce(
@@ -139,6 +147,7 @@ export function CheckoutView() {
                 Edit cart
               </Link>
             </div>
+            <CartOrderSummary orders={chatOrders} />
             <ul className="flex flex-col gap-3">
               {items.map((item) => (
                 <li
@@ -185,6 +194,15 @@ export function CheckoutView() {
                           </span>
                         ) : null}
                       </p>
+                      {/* This row's order state, once it has been sent to the chat. */}
+                      {(() => {
+                        const order = forLine(cartLineKey(item.productId, item.options));
+                        return order ? (
+                          <div className="mt-1">
+                            <CartOrderStatus status={order.status} />
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
 
