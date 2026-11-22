@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import { NextResponse } from "next/server";
 
 import { verifyFirebaseIdToken } from "./verify-token";
@@ -125,6 +126,16 @@ function getAdminApp() {
 
 export function getAdminDb() {
   return getFirestore(getAdminApp());
+}
+
+/**
+ * Default Storage bucket for the project.
+ *
+ * The bucket name comes from the service account's project id, which is why it
+ * doesn't need a separate env var.
+ */
+export function getAdminBucket() {
+  return getStorage(getAdminApp()).bucket();
 }
 
 /** The authenticated caller, derived from a verified Firebase ID token. */

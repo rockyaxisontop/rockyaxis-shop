@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  ExternalLink,
   Headphones,
   Home,
   MessageCircle,
@@ -23,20 +22,13 @@ import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice, storePrice } fr
 import { formatMoney } from "@/lib/format";
 import { cartItemId, subscribeCart, type CartItem } from "@/lib/firebase/cart";
 
-const WHATSAPP_NUMBER = "9779714501791";
-
-/** Orders are sent to MT Store on WhatsApp so the team can confirm details. */
+/** Orders are sent to MT Store's in-app chat so the team can confirm details. */
 export function CheckoutView() {
   const { user, loading } = useAuth();
   const { currency, countryName, locationLabel } = useCurrency();
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
-  const [origin, setOrigin] = useState("");
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -65,60 +57,6 @@ export function CheckoutView() {
     [items, currency],
   );
 
-  function whatsappLink(message: string) {
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-  }
-
-  function productPageUrl(item: CartItem) {
-    const options = new URLSearchParams(item.options ?? {}).toString();
-    return `${origin}/products/${encodeURIComponent(item.productId)}${options ? `?${options}` : ""}`;
-  }
-
-  function itemOrderMessage(item: CartItem) {
-    const lines = [
-      "Hello MT Store! I’d like to buy this item:",
-      "",
-      `Product: ${item.title}`,
-      item.brand ? `Brand: ${item.brand}` : null,
-      item.options && Object.keys(item.options).length > 0
-        ? `Options: ${Object.entries(item.options).map(([key, value]) => `${key}: ${value}`).join(", ")}`
-        : null,
-      `Quantity: ${item.quantity}`,
-      `Price each: ${formatMoney(storePrice(item.price, currency), currency)}`,
-      `Subtotal: ${formatMoney(storeLineTotal(item.price, item.quantity, currency), currency)}`,
-      `Product link: ${productPageUrl(item)}`,
-      "",
-      `Deliver to: ${countryName}`,
-      "Please confirm availability, delivery, and the final total. Thank you!",
-    ];
-    return lines.filter((line): line is string => line !== null).join("\n");
-  }
-
-  function allItemsOrderMessage() {
-    const lines = [
-      "Hello MT Store! I’d like to order all the items in my cart:",
-      "",
-      ...items.flatMap((item, index) => [
-        `${index + 1}. ${item.title}`,
-        item.brand ? `   Brand: ${item.brand}` : null,
-        item.options && Object.keys(item.options).length > 0
-          ? `   Options: ${Object.entries(item.options).map(([key, value]) => `${key}: ${value}`).join(", ")}`
-          : null,
-        `   Quantity: ${item.quantity}`,
-        `   Price each: ${formatMoney(storePrice(item.price, currency), currency)}`,
-        `   Subtotal: ${formatMoney(storeLineTotal(item.price, item.quantity, currency), currency)}`,
-        `   Product link: ${productPageUrl(item)}`,
-        "",
-      ].filter((line): line is string => line !== null)),
-      `Cart total in ${currency} (${STORE_DISCOUNT_PERCENT}% store discount applied):`,
-      `- ${formatMoney(totals.pay, currency)}`,
-      "",
-      `Deliver to: ${countryName}`,
-      "Please confirm availability, delivery, and the final total for my order. Thank you!",
-    ];
-    return lines.join("\n");
-  }
-
   if (loading || (user && !ready)) {
     return (
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
@@ -144,10 +82,6 @@ export function CheckoutView() {
     );
   }
 
-  const supportLink = whatsappLink(
-    "Hello MT Store! I have a question and would like some help, please.",
-  );
-
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5 sm:gap-6">
       <header className="flex items-center gap-3">
@@ -170,9 +104,10 @@ export function CheckoutView() {
           <MessageCircle className="size-5" />
         </span>
         <div>
-          <h2 className="text-sm font-bold text-ink">Simple WhatsApp ordering</h2>
+          <h2 className="text-sm font-bold text-ink">Order right here in chat</h2>
           <p className="mt-1 text-xs leading-5 text-ink-soft sm:text-sm">
-            Send your order to MT Store. We’ll confirm availability, delivery, and the final price with you.
+            Your order is sent to MT Store instantly. We confirm availability, delivery and the final
+            price in the same conversation — no other apps needed.
           </p>
         </div>
       </section>
@@ -253,17 +188,16 @@ export function CheckoutView() {
                     </div>
                   </div>
 
-                  <a
-                    href={whatsappLink(itemOrderMessage(item))}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`Order ${item.title} on WhatsApp`}
-                    className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#128c7e] px-4 text-sm font-bold text-white transition hover:bg-[#075e54] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#128c7e] focus-visible:ring-offset-2 sm:w-auto"
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/message?order=auto&item=${encodeURIComponent(cartItemId(item))}`)}
+                    aria-label={`Order ${item.title} in chat`}
+                    className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:w-auto"
                   >
                     <MessageCircle className="size-4" />
                     Buy this item
-                    <ExternalLink className="size-3.5" />
-                  </a>
+                    <ArrowRight className="size-3.5" />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -297,17 +231,16 @@ export function CheckoutView() {
                 </div>
               </dl>
 
-              <a
-                href={whatsappLink(allItemsOrderMessage())}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#128c7e] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#075e54] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#128c7e] focus-visible:ring-offset-2"
+              <button
+                type="button"
+                onClick={() => router.push("/message?order=auto")}
+                className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
                 <MessageCircle className="size-4" />
-                Order all items on WhatsApp
-              </a>
+                Order now in chat
+              </button>
               <p className="mt-2 text-center text-[11px] leading-5 text-ink-soft">
-                Opens WhatsApp with your item list ready to send.
+                Opens your chat with MT Store — your cart is sent automatically.
               </p>
 
               <ul className="mt-4 space-y-2 border-t border-border pt-4 text-xs text-ink-soft">
@@ -334,16 +267,14 @@ export function CheckoutView() {
                   <p className="mt-1 text-xs leading-5 text-ink-soft">
                     Ask a question without sending an order.
                   </p>
-                  <a
-                    href={supportLink}
-                    target="_blank"
-                    rel="noreferrer"
+                  <Link
+                    href="/message"
                     className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-white px-3 text-xs font-semibold text-ink transition hover:border-brand hover:text-brand"
                   >
                     <MessageCircle className="size-3.5" />
-                    Contact support
-                    <ExternalLink className="size-3" />
-                  </a>
+                    Chat with us
+                    <ArrowRight className="size-3" />
+                  </Link>
                 </div>
               </div>
             </section>

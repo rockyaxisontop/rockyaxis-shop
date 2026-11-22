@@ -46,5 +46,27 @@ service cloud.firestore {
     match /freebieOrders/{orderId} {
       allow read, write: if false;
     }
+
+    // ---------------------------------------------------------------------
+    // Internal messenger — SERVER ONLY.
+    //
+    // All access goes through /api/messages/* and /api/admin/* using the Admin
+    // SDK. Clients are denied outright so nobody can read another customer's
+    // messages, forge read receipts, clear their unread count, or grant
+    // themselves the admin role by writing to /admins.
+    // ---------------------------------------------------------------------
+    match /conversations/{conversationId} {
+      allow read, write: if false;
+      match /messages/{messageId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /admins/{uid} {
+      // Admins may read their own role document; nobody may write it from the
+      // client. Roles are granted server-side from the ADMIN_EMAILS allow-list.
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
   }
 }

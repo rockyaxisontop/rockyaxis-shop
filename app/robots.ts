@@ -21,6 +21,9 @@ export default function robots(): MetadataRoute.Robots {
           // One person's campaigns and orders are not public content.
           "/freebie/mine",
           "/freebie/order",
+          // Private customer chat and the admin panel.
+          "/message",
+          "/adminhacker",
         ],
       },
     ],
