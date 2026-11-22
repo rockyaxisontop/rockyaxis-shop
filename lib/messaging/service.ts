@@ -248,12 +248,27 @@ function buildMessage(input: MessageInput) {
     kind: input.kind,
     text: input.text.slice(0, 4000),
     attachment: input.attachment ?? null,
-    order: input.order ?? null,
+    // Orders come from the cart and may have optional fields missing (no image,
+    // no link, no options). Firestore rejects `undefined`, so deep-clean here.
+    order: input.order ? (stripDeep(input.order) as OrderPayload) : null,
     replyTo: input.replyTo ? stripUndefined(input.replyTo) : null,
     clientId: input.clientId ?? null,
     deliveredAt: null,
     readAt: null,
   };
+}
+
+/** Recursively removes `undefined` values — Firestore rejects them anywhere. */
+function stripDeep<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((item) => stripDeep(item)) as unknown as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, item]) => item !== undefined)
+        .map(([key, item]) => [key, stripDeep(item)]),
+    ) as T;
+  }
+  return value;
 }
 
 /** Appends a message and updates the conversation summary atomically. */
