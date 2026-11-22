@@ -50,7 +50,7 @@ export function CheckoutView() {
   }, [user]);
 
   // One total, in the visitor's currency — cart prices are USD internally.
-  const { orders: chatOrders, forLine } = useCartOrderState();
+  const { orders: chatOrders, forLine, isOrdered } = useCartOrderState();
 
   const totals = useMemo(
     () => ({
@@ -212,7 +212,9 @@ export function CheckoutView() {
                       - sent/awaiting payment → disabled "Order sent"
                       - no order   → "Buy this item" */}
                   {(() => {
-                    const order = forLine(cartLineKey(item.productId, item.options));
+                    const lineKey = cartLineKey(item.productId, item.options);
+                    const order = forLine(lineKey);
+                    const ordered = isOrdered(lineKey);
                     if (order?.status === "confirmed") {
                       return (
                         <button
@@ -226,12 +228,12 @@ export function CheckoutView() {
                         </button>
                       );
                     }
-                    if (order?.status === "awaiting_payment" || order?.status === "sent") {
+                    if (ordered) {
                       return (
                         <button
                           type="button"
                           disabled
-                          aria-label={`${item.title} order is being reviewed`}
+                          aria-label={`${item.title} is already in an order`}
                           className="inline-flex h-11 w-full shrink-0 cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-2 px-4 text-sm font-bold text-ink-soft ring-1 ring-border sm:w-auto"
                         >
                           <Clock3 className="size-4" />

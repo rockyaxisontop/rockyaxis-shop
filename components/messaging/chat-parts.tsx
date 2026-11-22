@@ -241,13 +241,16 @@ export function MessageBubble({
       ) : null}
 
       {!mine ? (
-        <div className="w-7 shrink-0">
+        <div className="flex w-7 shrink-0 justify-center">
           {showAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={photo ?? MT_STORE.photo}
-              alt=""
-              className="size-7 rounded-full border border-border bg-white object-contain p-0.5"
+              alt="MT Store"
+              width={28}
+              height={28}
+              className="size-7 rounded-full bg-white object-cover"
+              style={{ width: 28, height: 28 }}
             />
           ) : null}
         </div>

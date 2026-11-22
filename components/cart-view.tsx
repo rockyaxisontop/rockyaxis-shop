@@ -34,7 +34,7 @@ export function CartView() {
   const [ready, setReady] = useState(false);
   const { campaigns } = useFreebieCampaigns(Boolean(user));
   // Must be called unconditionally, before any early return.
-  const { orders: chatOrders, forLine } = useCartOrderState();
+  const { orders: chatOrders, forLine, isOrdered, failed } = useCartOrderState();
 
   useEffect(() => {
     if (!user) {
@@ -128,6 +128,17 @@ export function CartView() {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
           {/* Items */}
           <div className="flex flex-col gap-3">
+            {/* If the order state can't be fetched, say so: silently showing
+                "not ordered" is what made this confusing before. */}
+            {failed ? (
+              <p
+                role="status"
+                className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-[11px] font-medium text-ink-soft"
+              >
+                Live order status is unavailable right now. If an item doesn&apos;t show a status, refresh in a
+                moment — do not place the same order twice.
+              </p>
+            ) : null}
             <CartOrderSummary orders={chatOrders} />
             <ul className="flex flex-col gap-3">
               {items.map((item) => {
@@ -212,7 +223,7 @@ export function CartView() {
                       // A row that is part of an order is locked: changing or
                       // removing it would desync the order the admin is holding.
                       const order = forLine(cartLineKey(item.productId, item.options));
-                      const locked = order?.status === "sent" || order?.status === "awaiting_payment" || order?.status === "confirmed";
+                      const locked = isOrdered(cartLineKey(item.productId, item.options));
 
                       if (locked) {
                         return (
@@ -222,7 +233,7 @@ export function CartView() {
                               Qty {item.quantity}
                             </span>
                             <span className="text-[10px] text-ink-soft">
-                              {order.status === "confirmed" ? "Purchased" : "Locked in order"}
+                              {order?.status === "confirmed" ? "Purchased" : "Locked in order"}
                             </span>
                           </div>
                         );

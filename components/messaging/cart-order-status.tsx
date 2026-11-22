@@ -16,30 +16,49 @@ import { cn } from "@/lib/utils";
  */
 export function useCartOrderState() {
   const [orders, setOrders] = useState<ChatOrder[]>([]);
+  const [failed, setFailed] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       const { orders: list } = await messageApi.orders();
       setOrders(list);
-    } catch (error) {
-      /* the cart must keep working even if this call fails */
-      console.error("[cart-order-state] refresh failed:", error);
+      setFailed(false);
+    } catch {
+      // Surfaced to the UI so the customer isn't left guessing, but the cart
+      // itself must keep working.
+      setFailed(true);
     }
   }, []);
 
   useEffect(() => {
     void refresh();
+    // Refresh promptly: an order the admin just confirmed should appear without
+    // the customer reloading the page.
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
-    }, 15000);
-    return () => clearInterval(timer);
+    }, 5000);
+
+    // Any change of tab/network state is a good moment to catch up.
+    const onWake = () => void refresh();
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
+    };
   }, [refresh]);
 
   /** The newest order containing this exact cart row, if any. */
   const forLine = (lineKey: string): ChatOrder | undefined =>
     orders.find((order) => order.lineIds.includes(lineKey));
 
-  return { orders, forLine, refresh };
+  /** Any live (non-cancelled) order for this row. */
+  const isOrdered = (lineKey: string) =>
+    orders.some((order) => order.status !== "cancelled" && order.lineIds.includes(lineKey));
+
+  return { orders, forLine, isOrdered, failed, refresh };
 }
 
 /** Key the server uses to match a cart row to its order line. */

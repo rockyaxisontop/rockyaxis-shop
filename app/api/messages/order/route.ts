@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { ApiError, apiErrorResponse, getAdminDb, requireUser } from "@/lib/firebase/admin";
+import { orderedLineKeys } from "@/lib/messaging/orders";
 import { sendOrderMessage } from "@/lib/messaging/service";
 import type { OrderLine } from "@/lib/messaging/types";
 
@@ -45,7 +46,20 @@ export async function POST(request: Request) {
 
     if (rows.length === 0) throw new ApiError("Your cart is empty.", 400);
 
-    const lines: OrderLine[] = rows.map((row) => ({
+    // Never re-send lines that are already in an open or completed order: the
+    // admin would otherwise receive (and pay for) the same product twice.
+    // `recordedLineIds` from the client is only a hint — the authoritative list
+    // is rebuilt here from chatOrders, which the client cannot forge.
+    const alreadyOrdered = await orderedLineKeys(user.uid);
+    const freshRows = rows.filter(
+      (row) => !alreadyOrdered.has(`${row.productId}|${JSON.stringify(row.options ?? {})}`),
+    );
+
+    if (freshRows.length === 0) {
+      throw new ApiError("Everything in your cart is already in an order.", 409);
+    }
+
+    const lines: OrderLine[] = freshRows.map((row) => ({
       productId: String(row.productId ?? ""),
       title: String(row.title ?? "Product"),
       image: row.image,

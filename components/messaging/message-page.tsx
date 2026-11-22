@@ -227,9 +227,10 @@ export function MessagePage() {
           const previous = messages[index - 1];
           const showDay =
             !previous || new Date(previous.createdAt).toDateString() !== new Date(message.createdAt).toDateString();
-          const showAvatar =
-            !previous || previous.senderId !== message.senderId ||
-            new Date(message.createdAt).getTime() - new Date(previous.createdAt).getTime() > 300000;
+          // Show the store's avatar on every received message: in a 1-to-1
+          // thread there is only one other party, so the old "grouping" rule
+          // left whole runs of bubbles with no picture at all.
+          const showAvatar = message.senderRole !== "customer";
 
           return (
             <div key={message.id} className="flex flex-col gap-2">
