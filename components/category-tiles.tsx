@@ -1,11 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  Baby,
+  BookOpen,
+  Briefcase,
   Camera,
+  Car,
   Dumbbell,
   Gamepad2,
   Headphones,
   House,
   Laptop,
+  Plane,
   Shirt,
   Smartphone,
   Sparkles,
@@ -24,15 +32,22 @@ const CATEGORIES = [
   { label: "Speakers", icon: Speaker, q: "speakers" },
   { label: "TV & Video", icon: Tv, q: "TV video" },
   { label: "Cameras", icon: Camera, q: "cameras" },
+  { label: "Gaming", icon: Gamepad2, q: "gaming console accessories" },
   { label: "Home & Kitchen", icon: House, q: "home kitchen" },
   { label: "Fashion", icon: Shirt, q: "fashion clothing" },
   { label: "Beauty", icon: Sparkles, q: "beauty skincare" },
   { label: "Sports & Outdoors", icon: Dumbbell, q: "sports outdoor fitness" },
-  { label: "Gaming", icon: Gamepad2, q: "gaming" },
+  { label: "Office & Study", icon: Briefcase, q: "office desk study" },
+  { label: "Baby & Kids", icon: Baby, q: "baby kids toys" },
+  { label: "Books & Media", icon: BookOpen, q: "books stationery" },
+  { label: "Car & Bike", icon: Car, q: "car bike accessories" },
+  { label: "Drones", icon: Plane, q: "drones camera" },
 ];
 
 /** Circular icon tiles under "Shop by Category". */
 export function CategoryTiles() {
+  const router = useRouter();
+
   return (
     <section id="shop-by-category" className="flex flex-col gap-4">
       <div className="flex items-end justify-between gap-4 border-b border-border pb-3">
@@ -46,20 +61,29 @@ export function CategoryTiles() {
       </div>
 
       <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">
-        {CATEGORIES.map(({ label, icon: Icon, q }) => (
-          <Link
-            key={q}
-            href={`/search?q=${encodeURIComponent(q)}`}
-            className="group flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-white p-2.5 transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md sm:min-h-32 sm:p-3"
-          >
-            <span className="grid size-11 place-items-center rounded-lg bg-brand-tint text-brand transition-colors group-hover:bg-brand group-hover:text-white sm:size-12">
-              <Icon className="size-6" strokeWidth={1.7} />
-            </span>
-            <span className="text-center text-[12px] leading-tight font-medium text-ink sm:text-sm">
-              {label}
-            </span>
-          </Link>
-        ))}
+        {CATEGORIES.map(({ label, icon: Icon, q }) => {
+          const href = `/search?q=${encodeURIComponent(q)}`;
+          return (
+            <Link
+              key={q}
+              href={href}
+              // Prefetch on intent, not on mount: 13 tiles prefetching at once
+              // saturated the browser and made every tap feel laggy.
+              prefetch={false}
+              onMouseEnter={() => router.prefetch(href)}
+              onFocus={() => router.prefetch(href)}
+              onTouchStart={() => router.prefetch(href)}
+              className="group flex min-h-28 touch-manipulation flex-col items-center justify-center gap-2 rounded-lg border border-border bg-white p-2.5 transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md active:scale-[0.98] sm:min-h-32 sm:p-3"
+            >
+              <span className="grid size-11 place-items-center rounded-lg bg-brand-tint text-brand transition-colors group-hover:bg-brand group-hover:text-white sm:size-12">
+                <Icon className="size-6" strokeWidth={1.7} />
+              </span>
+              <span className="text-center text-[12px] leading-tight font-medium text-ink sm:text-sm">
+                {label}
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { SearchExperience } from "@/components/search-experience";
 import { SuggestedProducts } from "@/components/suggested-products";
@@ -31,10 +32,7 @@ export async function generateMetadata({ searchParams }: SearchPageProps): Promi
 // Suggestions are re-fetched at most every 30 minutes.
 export const revalidate = 1800;
 
-export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { q } = await searchParams;
-  const initialQuery = Array.isArray(q) ? (q[0] ?? "") : (q ?? "");
-  const groups = await getSuggestedProducts(8);
+export default function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <div>
@@ -44,9 +42,29 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         </p>
       </div>
 
-      <SearchExperience initialQuery={initialQuery} />
+      {/* The search box renders instantly; only the query needs the URL. */}
+      <Suspense fallback={<div className="h-11 w-full animate-pulse rounded-full bg-surface-2" />}>
+        <SearchHeading searchParams={searchParams} />
+      </Suspense>
 
-      <SuggestedProducts groups={groups} />
+      {/* Catalogue suggestions stream in AFTER the page is usable. They used to
+          be awaited up front, which made every link into /search wait on eight
+          separate product queries before rendering anything. */}
+      <Suspense fallback={null}>
+        <Suggestions />
+      </Suspense>
     </div>
   );
+}
+
+/** The client search block, resolved from the URL inside its own boundary. */
+async function SearchHeading({ searchParams }: SearchPageProps) {
+  const { q } = await searchParams;
+  const initialQuery = Array.isArray(q) ? (q[0] ?? "") : (q ?? "");
+  return <SearchExperience initialQuery={initialQuery} />;
+}
+
+async function Suggestions() {
+  const groups = await getSuggestedProducts(8);
+  return <SuggestedProducts groups={groups} />;
 }

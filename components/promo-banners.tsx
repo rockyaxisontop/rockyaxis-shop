@@ -1,15 +1,28 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles, Tag, Truck } from "lucide-react";
 
 import { STORE_DISCOUNT_PERCENT } from "@/lib/discount";
 
 /** Big Billion Days campaign; every product is sold by us below list price. */
 export function PromoBanners() {
+  const router = useRouter();
+  // Prefetch on intent: taps land instantly without loading /search eagerly.
+  const intent = (href: string) => ({
+    prefetch: false as const,
+    onMouseEnter: () => router.prefetch(href),
+    onFocus: () => router.prefetch(href),
+    onTouchStart: () => router.prefetch(href),
+  });
+
   return (
     <section className="grid gap-3 md:grid-cols-[1.35fr_0.85fr] md:gap-4">
       <Link
         href="/search"
-        className="group relative flex min-h-56 items-center justify-between gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[#8f1d24] via-[#df3c2f] to-[#f47535] p-5 text-white shadow-sm transition hover:shadow-lg sm:min-h-64 sm:p-8"
+        {...intent("/search")}
+        className="group relative flex min-h-56 items-center justify-between gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[#8f1d24] via-[#df3c2f] to-[#f47535] p-5 text-white shadow-sm transition hover:shadow-lg active:scale-[0.995] sm:min-h-64 sm:p-8"
       >
         <div className="relative z-10 max-w-md sm:max-w-[calc(100%-9rem)]">
           <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
@@ -40,7 +53,8 @@ export function PromoBanners() {
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1">
         <Link
           href="/search?q=headphones speakers"
-          className="group flex min-h-28 flex-col justify-center rounded-2xl bg-[#f2a900] p-5 text-[#27251f] transition hover:brightness-105 sm:min-h-0 md:min-h-0"
+          {...intent("/search?q=headphones speakers")}
+          className="group flex min-h-28 touch-manipulation flex-col justify-center rounded-2xl bg-[#f2a900] p-5 text-[#27251f] transition hover:brightness-105 active:scale-[0.99] sm:min-h-0 md:min-h-0"
         >
           <span className="flex items-center gap-2 text-[11px] font-bold uppercase">
             <Tag className="size-3.5" />
@@ -54,7 +68,8 @@ export function PromoBanners() {
 
         <Link
           href="/search?q=laptops"
-          className="group flex min-h-28 flex-col justify-center rounded-2xl bg-[#087e83] p-5 text-white transition hover:brightness-110 sm:min-h-0 md:min-h-0"
+          {...intent("/search?q=laptops")}
+          className="group flex min-h-28 touch-manipulation flex-col justify-center rounded-2xl bg-[#087e83] p-5 text-white transition hover:brightness-110 active:scale-[0.99] sm:min-h-0 md:min-h-0"
         >
           <span className="flex items-center gap-2 text-[11px] font-bold uppercase">
             <Truck className="size-3.5" />

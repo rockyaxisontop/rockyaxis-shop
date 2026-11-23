@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
+import { SearchSuggestions } from "@/components/search-suggestions";
 import { useAuth } from "@/components/providers";
 import { signOutUser } from "@/lib/firebase/auth";
 
@@ -47,6 +48,25 @@ export function SiteHeader() {
   const { locationLabel, countryName } = useCurrency();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const searchBox = useRef<HTMLDivElement>(null);
+
+  // Close the suggestion panel on an outside click or Escape.
+  useEffect(() => {
+    if (!suggestOpen) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!searchBox.current?.contains(event.target as Node)) setSuggestOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSuggestOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [suggestOpen]);
 
   function submitSearch(event: React.FormEvent) {
     event.preventDefault();
@@ -54,7 +74,22 @@ export function SiteHeader() {
     if (!q) return;
     router.push(`/search?q=${encodeURIComponent(q)}`);
     setMenuOpen(false);
+    setSuggestOpen(false);
   }
+
+  /**
+   * Prefetch on intent rather than on mount.
+   *
+   * Every nav link prefetching at once flooded the network on a cold load, which
+   * is why taps felt slow. Prefetching only when the pointer/finger reaches the
+   * link keeps navigation instant without the upfront cost.
+   */
+  const intent = (href: string) => ({
+    prefetch: false as const,
+    onMouseEnter: () => router.prefetch(href),
+    onFocus: () => router.prefetch(href),
+    onTouchStart: () => router.prefetch(href),
+  });
 
   const authAction = loading ? (
     <div className="size-9 shrink-0 animate-pulse rounded-full bg-surface-2" />
@@ -105,26 +140,39 @@ export function SiteHeader() {
   );
 
   const searchField = (
-    <form onSubmit={submitSearch} role="search" className="relative w-full">
-      <Search
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ink-soft"
-      />
-      <input
-        type="search"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search products, brands…"
-        aria-label="Search products"
-        className="h-11 w-full rounded-full border border-border bg-surface-2 pr-24 pl-11 text-sm text-ink outline-none placeholder:text-ink-soft focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20"
-      />
-      <button
-        type="submit"
-        className="absolute top-1/2 right-1.5 h-8 -translate-y-1/2 rounded-full bg-brand px-4 text-xs font-semibold text-white transition hover:brightness-110"
-      >
-        Search
-      </button>
-    </form>
+    <div ref={searchBox} className="relative w-full">
+      <form onSubmit={submitSearch} role="search" className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ink-soft"
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setSuggestOpen(true);
+          }}
+          onFocus={() => setSuggestOpen(true)}
+          placeholder="Search products, brands…"
+          aria-label="Search products"
+          autoComplete="off"
+          className="h-11 w-full rounded-full border border-border bg-surface-2 pr-24 pl-11 text-sm text-ink outline-none placeholder:text-ink-soft focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20"
+        />
+        <button
+          type="submit"
+          className="absolute top-1/2 right-1.5 h-8 -translate-y-1/2 rounded-full bg-brand px-4 text-xs font-semibold text-white transition hover:brightness-110"
+        >
+          Search
+        </button>
+      </form>
+
+      {suggestOpen ? (
+        <div className="absolute inset-x-0 top-full z-50 mt-1.5">
+          <SearchSuggestions query={query} onNavigate={() => setSuggestOpen(false)} />
+        </div>
+      ) : null}
+    </div>
   );
 
   return (
@@ -194,6 +242,7 @@ export function SiteHeader() {
             <Link
               key={q}
               href={`/search?q=${encodeURIComponent(q)}`}
+              {...intent(`/search?q=${encodeURIComponent(q)}`)}
               className="rounded-md px-3 py-1.5 text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink"
             >
               {label}
@@ -204,6 +253,7 @@ export function SiteHeader() {
             <Link
               key={href}
               href={href}
+              {...intent(href)}
               className="rounded-md px-3 py-1.5 text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink"
             >
               {label}
@@ -238,6 +288,7 @@ export function SiteHeader() {
               <Link
                 key={q}
                 href={`/search?q=${encodeURIComponent(q)}`}
+                {...intent(`/search?q=${encodeURIComponent(q)}`)}
                 onClick={() => setMenuOpen(false)}
                 className="flex items-center gap-3 py-2.5 text-sm text-ink"
               >
@@ -253,6 +304,7 @@ export function SiteHeader() {
               <Link
                 key={href}
                 href={href}
+                {...intent(href)}
                 onClick={() => setMenuOpen(false)}
                 className="flex items-center gap-3 py-2.5 text-sm text-ink"
               >
