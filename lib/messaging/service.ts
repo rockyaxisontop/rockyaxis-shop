@@ -505,9 +505,29 @@ export async function getMyConversation(user: AuthUser): Promise<PublicConversat
 /* Admin                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export async function listAllConversations(): Promise<PublicConversation[]> {
-  const snapshot = await db().collection(CONVERSATIONS).orderBy("lastMessageAt", "desc").limit(200).get();
-  return snapshot.docs.map((doc) => toConversation(doc.id, doc.data()));
+export async function listAllConversations(
+  { limit = 30, before }: { limit?: number; before?: string } = {},
+): Promise<{ conversations: PublicConversation[]; nextCursor: string | null }> {
+  // Paginated: the inbox used to read 200 conversations on every 4-second poll,
+  // which is what drained the Firestore quota. 30 per page is plenty for a
+  // screen and costs a fraction of the reads.
+  const pageSize = Math.min(Math.max(limit, 1), 50);
+  let query = db()
+    .collection(CONVERSATIONS)
+    .orderBy("lastMessageAt", "desc")
+    .limit(pageSize + 1);
+
+  if (before) {
+    const cursor = await db().collection(CONVERSATIONS).doc(before).get();
+    if (cursor.exists) query = query.startAfter(cursor);
+  }
+
+  const snapshot = await query.get();
+  const docs = snapshot.docs.slice(0, pageSize);
+  return {
+    conversations: docs.map((doc) => toConversation(doc.id, doc.data())),
+    nextCursor: snapshot.docs.length > pageSize ? docs[docs.length - 1]?.id ?? null : null,
+  };
 }
 
 export async function getConversationForAdmin(uid: string): Promise<PublicConversation | null> {

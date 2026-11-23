@@ -89,8 +89,10 @@ export const messageApi = {
 export const adminApi = {
   me: () => call<{ admin: { uid: string; email: string; role: "admin" } }>("/api/admin/me"),
 
-  conversations: () =>
-    call<{ conversations: PublicConversation[]; stats: AdminStats }>("/api/admin/conversations"),
+  conversations: (before?: string) =>
+    call<{ conversations: PublicConversation[]; nextCursor: string | null; stats: AdminStats }>(
+      `/api/admin/conversations${before ? `?before=${encodeURIComponent(before)}` : ""}`,
+    ),
 
   messages: (uid: string, before?: string) =>
     call<{ messages: PublicMessage[] }>(

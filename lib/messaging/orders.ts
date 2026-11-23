@@ -94,17 +94,18 @@ export async function listOrdersForCustomer(uid: string): Promise<ChatOrder[]> {
 }
 
 /**
- * Line keys this customer already has in an order that isn't cancelled.
+ * Line keys this customer has in an order that is still BEING HANDLED.
  *
- * Used to stop the same product being sent (and paid for) twice: a cart row is
- * "already ordered" while an order containing it is sent, awaiting payment or
- * confirmed. Cancelled orders deliberately drop out, so it can be re-ordered.
+ * Only `sent` and `awaiting_payment` block a re-order: the admin is holding those
+ * lines, so letting the customer change or re-send them would desync the order.
+ * A `confirmed` order is finished business — the customer may buy the same
+ * product again — and `cancelled` frees the line completely.
  */
 export async function orderedLineKeys(uid: string): Promise<Set<string>> {
   const orders = await listOrdersForCustomer(uid);
   const keys = new Set<string>();
   for (const order of orders) {
-    if (order.status === "cancelled") continue;
+    if (order.status !== "sent" && order.status !== "awaiting_payment") continue;
     for (const lineId of order.lineIds) keys.add(lineId);
   }
   return keys;

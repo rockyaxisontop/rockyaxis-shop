@@ -188,8 +188,13 @@ export function CartView() {
                     {(() => {
                       const order = forLine(cartLineKey(item.productId, item.options));
                       return order ? (
-                        <div className="mt-1">
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <CartOrderStatus status={order.status} />
+                          {order.status === "confirmed" ? (
+                            <span className="text-[10px] font-semibold text-stock">
+                              You can buy this again
+                            </span>
+                          ) : null}
                         </div>
                       ) : null;
                     })()}
@@ -220,10 +225,11 @@ export function CartView() {
 
                   <div className="flex shrink-0 flex-col items-end justify-between gap-2">
                     {(() => {
-                      // A row that is part of an order is locked: changing or
-                      // removing it would desync the order the admin is holding.
-                      const order = forLine(cartLineKey(item.productId, item.options));
-                      const locked = isOrdered(cartLineKey(item.productId, item.options));
+                      // Locked ONLY while the admin is handling the line. A
+                      // confirmed order unlocks it so the product can be bought
+                      // again — that's a legitimate repeat purchase.
+                      const lineKey = cartLineKey(item.productId, item.options);
+                      const locked = isOrdered(lineKey);
 
                       if (locked) {
                         return (
@@ -232,9 +238,7 @@ export function CartView() {
                               <LockKeyhole className="size-3" />
                               Qty {item.quantity}
                             </span>
-                            <span className="text-[10px] text-ink-soft">
-                              {order?.status === "confirmed" ? "Purchased" : "Locked in order"}
-                            </span>
+                            <span className="text-[10px] text-ink-soft">In progress in chat</span>
                           </div>
                         );
                       }

@@ -8,6 +8,7 @@ import { getProduct } from "@/lib/channel3/products";
 import { getCurrencyContext } from "@/lib/currency/server";
 import { storeListPrice, storePrice } from "@/lib/discount";
 import { discountPercent, formatMoney } from "@/lib/format";
+import { safeJsonLd } from "@/lib/json-ld";
 import { SITE_NAME, absoluteUrl } from "@/lib/site";
 
 type PageProps = {
@@ -109,7 +110,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
       {productJsonLd ? (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(productJsonLd) }}
         />
       ) : null}
       {/* Matches the visible breadcrumb below, so results show the page trail. */}

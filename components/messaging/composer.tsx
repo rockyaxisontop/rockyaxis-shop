@@ -20,6 +20,7 @@ export function MessageComposer({
   onCancelReply,
   onOptimistic,
   onRollback,
+  toolbar,
 }: {
   onSend: (input: SendInput) => Promise<void>;
   disabled?: boolean;
@@ -30,6 +31,8 @@ export function MessageComposer({
   onOptimistic?: (input: Omit<SendInput, "clientId">) => string | undefined;
   /** Remove a draft whose send failed. */
   onRollback?: (clientId: string) => void;
+  /** Extra control shown left of the media buttons (admin quick messages). */
+  toolbar?: (insert: (text: string) => void) => React.ReactNode;
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -174,6 +177,9 @@ export function MessageComposer({
             if (file) void upload(file);
           }}
         />
+
+        {/* Admin-only extras, e.g. quick messages. */}
+        {toolbar ? toolbar((value) => setText((current) => (current ? `${current}\n${value}` : value))) : null}
 
         {/* One attachment button: documents. */}
         <ComposerButton label="Attach a file" onClick={() => fileInput.current?.click()} disabled={busy}>

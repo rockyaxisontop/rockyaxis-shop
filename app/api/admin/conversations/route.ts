@@ -5,14 +5,19 @@ import { getAdminStats, listAllConversations, requireAdmin } from "@/lib/messagi
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/admin/conversations — every customer conversation, newest first. */
+/** GET /api/admin/conversations?before=<id> — newest first, one page at a time. */
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
     await requireAdmin(user);
 
-    const [conversations, stats] = await Promise.all([listAllConversations(), getAdminStats()]);
-    return NextResponse.json({ conversations, stats });
+    const before = new URL(request.url).searchParams.get("before") ?? undefined;
+    const [page, stats] = await Promise.all([listAllConversations({ before }), getAdminStats()]);
+    return NextResponse.json({
+      conversations: page.conversations,
+      nextCursor: page.nextCursor,
+      stats,
+    });
   } catch (error) {
     return apiErrorResponse(error);
   }

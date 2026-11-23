@@ -55,10 +55,26 @@ export function useCartOrderState() {
     orders.find((order) => order.lineIds.includes(lineKey));
 
   /** Any live (non-cancelled) order for this row. */
+  /**
+   * A row is only BLOCKED while an order is still in progress.
+   *
+   * `sent` and `awaiting_payment` mean the admin is holding this line, so it must
+   * not change underneath them. Once an order is `confirmed` (delivered success)
+   * the customer is free to buy the same product again — that's a new purchase,
+   * not a duplicate. `cancelled` also frees the row.
+   */
   const isOrdered = (lineKey: string) =>
-    orders.some((order) => order.status !== "cancelled" && order.lineIds.includes(lineKey));
+    orders.some(
+      (order) =>
+        (order.status === "sent" || order.status === "awaiting_payment") &&
+        order.lineIds.includes(lineKey),
+    );
 
-  return { orders, forLine, isOrdered, failed, refresh };
+  /** Has this row ever been purchased successfully? (Shown as a badge, not a lock.) */
+  const wasPurchased = (lineKey: string) =>
+    orders.some((order) => order.status === "confirmed" && order.lineIds.includes(lineKey));
+
+  return { orders, forLine, isOrdered, wasPurchased, failed, refresh };
 }
 
 /** Key the server uses to match a cart row to its order line. */

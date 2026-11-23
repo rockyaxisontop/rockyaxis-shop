@@ -70,15 +70,18 @@ export async function POST(request: Request) {
         productId: String(body.item.productId),
         options: body.item.options,
       });
-      const quantity = Math.max(1, Math.floor(Number(body.item.quantity ?? 1)) || 1);
+      const requested = Math.max(1, Math.floor(Number(body.item.quantity ?? 1)) || 1);
 
-      await itemsRef(user.uid)
-        .doc(id)
-        .set(
-          { ...body.item, id, quantity, updatedAt: new Date() },
-          { merge: true },
-        );
-      return NextResponse.json({ ok: true, id });
+      const ref = itemsRef(user.uid).doc(id);
+      const existing = await ref.get();
+
+      // Adding the same product + variant again INCREMENTS its quantity instead
+      // of creating a second row. That was how one product became "2 products".
+      const current = existing.exists ? Number(existing.data()?.quantity ?? 0) : 0;
+      const quantity = Math.min(current + requested, 99);
+
+      await ref.set({ ...body.item, id, quantity, updatedAt: new Date() }, { merge: true });
+      return NextResponse.json({ ok: true, id, quantity, added: existing.exists ? 0 : 1 });
     }
 
     if (body.action === "quantity") {

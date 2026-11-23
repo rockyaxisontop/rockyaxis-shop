@@ -1,3 +1,4 @@
+import { safeJsonLd } from "@/lib/json-ld";
 import { SITE_CONTACT, SITE_DESCRIPTION, SITE_NAME, SITE_SOCIAL, SITE_URL, absoluteUrl } from "@/lib/site";
 
 /**
@@ -66,7 +67,7 @@ export function SiteStructuredData({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(graph) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(graph) }}
     />
   );
 }

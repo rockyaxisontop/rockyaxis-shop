@@ -28,8 +28,16 @@ import {
 import { MessageComposer } from "@/components/messaging/composer";
 import { adminApi } from "@/lib/messaging/client";
 import { CustomerInfoDrawer } from "@/components/admin/customer-info-drawer";
+import { QuickMessagePicker } from "@/components/admin/quick-message-picker";
+import { buildContext } from "@/lib/messaging/quick-replies";
 import { EnablePushButton } from "@/components/messaging/enable-push-button";
-import type { AdminStats, ChatOrderStatus, PublicConversation, PublicMessage } from "@/lib/messaging/types";
+import type {
+  AdminCustomerProfile,
+  AdminStats,
+  ChatOrderStatus,
+  PublicConversation,
+  PublicMessage,
+} from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "unreplied" | "unread" | "replied" | "newest" | "active";
@@ -92,11 +100,24 @@ export function AdminDashboard() {
       .catch(() => setAccess("denied"));
   }, [loading, router, user]);
 
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
   const refresh = useCallback(async () => {
     try {
-      const { conversations: list, stats: counters } = await adminApi.conversations();
-      setConversations(list);
+      const { conversations: list, stats: counters, nextCursor: cursor } =
+        await adminApi.conversations();
+
+      // Merge by id so a loaded page of older chats isn't thrown away when the
+      // 5-second poll refreshes the first page.
+      setConversations((current) => {
+        const map = new Map(current.map((item) => [item.id, item]));
+        for (const item of list) map.set(item.id, item);
+        return [...map.values()].sort(
+          (a, b) => new Date(b.lastMessage.at ?? 0).getTime() - new Date(a.lastMessage.at ?? 0).getTime(),
+        );
+      });
       setStats(counters);
+      setNextCursor((current) => current ?? cursor);
       setError(null);
 
       // A push notification deep-links here with ?c=<uid>; open that thread.
@@ -109,6 +130,22 @@ export function AdminDashboard() {
     }
   }, []);
 
+  /** Loads the next page of older conversations. */
+  const loadMore = useCallback(async () => {
+    if (!nextCursor) return;
+    try {
+      const { conversations: older, nextCursor: cursor } = await adminApi.conversations(nextCursor);
+      setConversations((current) => {
+        const map = new Map(current.map((item) => [item.id, item]));
+        for (const item of older) map.set(item.id, item);
+        return [...map.values()];
+      });
+      setNextCursor(cursor);
+    } catch {
+      setNextCursor(null);
+    }
+  }, [nextCursor]);
+
   // Poll the inbox while the tab is visible; nothing runs in the background.
   useEffect(() => {
     if (access !== "granted") return;
@@ -117,7 +154,7 @@ export function AdminDashboard() {
       if (document.visibilityState === "visible") void refresh();
     }, 4000);
     return () => clearInterval(timer);
-  }, [access, refresh]);
+  }, [access, refresh, nextCursor]);
 
   // Notification sound for genuinely new unread messages.
   const lastTotalUnread = useRef(0);
@@ -335,6 +372,17 @@ export function AdminDashboard() {
                 </li>
               );
             })}
+            {nextCursor ? (
+              <li className="p-2">
+                <button
+                  type="button"
+                  onClick={() => void loadMore()}
+                  className="w-full rounded-lg border border-border py-2 text-[11px] font-bold text-ink-soft transition hover:border-brand hover:text-brand"
+                >
+                  Load older conversations
+                </button>
+              </li>
+            ) : null}
           </ul>
         </section>
 
@@ -396,6 +444,14 @@ function Stat({
   );
 }
 
+/** Joins the saved address fields into the one line a rep reads out. */
+function fullAddress(customer: AdminCustomerProfile): string {
+  const p = customer.profile;
+  return [p.buildingStreet, p.locality, p.area, p.city, p.region, p.address]
+    .filter((part) => part && part.trim())
+    .join(", ");
+}
+
 function AdminChat({
   conversation,
   onBack,
@@ -412,6 +468,21 @@ function AdminChat({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [replyTo, setReplyTo] = useState<PublicMessage | null>(null);
+  // Customer details power the quick-message templates (address, phone, order).
+  const [customer, setCustomer] = useState<AdminCustomerProfile | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    adminApi
+      .profile(conversation.id)
+      .then((data) => {
+        if (active) setCustomer(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [conversation.id]);
   const [orderStatuses, setOrderStatuses] = useState<Record<string, ChatOrderStatus>>({});
 
   // Order statuses come from the customer's order records, keyed by reference.
@@ -568,6 +639,21 @@ function AdminChat({
         onCancelReply={() => setReplyTo(null)}
         onOptimistic={optimistic}
         onRollback={dropOptimistic}
+        toolbar={(insert) => (
+          <QuickMessagePicker
+            context={buildContext({
+              name: customer?.profile.fullName ?? conversation.customer.name,
+              address: customer ? fullAddress(customer) : conversation.customer.address,
+              phone: customer?.profile.phoneNumber ?? conversation.customer.phone,
+              email: customer?.profile.email ?? conversation.customer.email ?? null,
+              orderReference: customer?.orders[0]?.reference ?? null,
+              orderTotal: customer?.orders[0]
+                ? `${customer.orders[0].total.toFixed(2)} ${customer.orders[0].currency}`
+                : null,
+            })}
+            onInsert={insert}
+          />
+        )}
       />
       <p className="border-t border-border bg-white px-3 py-1 text-center text-[10px] text-ink-soft">
         Replying as {MT_STORE.name} · your reply appears instantly for the customer

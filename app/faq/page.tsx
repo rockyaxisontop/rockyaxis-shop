@@ -4,6 +4,7 @@ import { ArrowRight, CircleHelp, Mail } from "lucide-react";
 
 import { ProductSuggestions } from "@/components/product-suggestions";
 import { FAQ_QUESTIONS } from "@/lib/faq";
+import { safeJsonLd } from "@/lib/json-ld";
 import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -32,7 +33,7 @@ export default function FAQPage() {
       <script
         type="application/ld+json"
         // Serialized server-side from a fixed constant; no user input.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
       />
       <header className="rounded-3xl bg-gradient-to-br from-[#011627] via-[#0b3d59] to-[#1d7fa4] px-6 py-9 text-white sm:px-9 sm:py-11">
         <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">

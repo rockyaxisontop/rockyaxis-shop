@@ -215,17 +215,25 @@ export function CheckoutView() {
                     const lineKey = cartLineKey(item.productId, item.options);
                     const order = forLine(lineKey);
                     const ordered = isOrdered(lineKey);
-                    if (order?.status === "confirmed") {
+                    // A completed order is finished business: the customer may
+                    // buy the same product again, so this re-enables ordering.
+                    if (order?.status === "confirmed" && !ordered) {
                       return (
-                        <button
-                          type="button"
-                          disabled
-                          aria-label={`${item.title} already ordered successfully`}
-                          className="inline-flex h-11 w-full shrink-0 cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-stock-bg px-4 text-sm font-bold text-stock ring-1 ring-stock/40 sm:w-auto"
-                        >
-                          <CheckCircle2 className="size-4" />
-                          Order success
-                        </button>
+                        <div className="flex w-full shrink-0 flex-col gap-1.5 sm:w-auto">
+                          <span className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-stock-bg px-3 py-1 text-[11px] font-extrabold text-stock ring-1 ring-stock/30">
+                            <CheckCircle2 className="size-3.5" />
+                            Order success
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/message?order=auto&item=${encodeURIComponent(cartItemId(item))}`)}
+                            aria-label={`Buy ${item.title} again in chat`}
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white transition hover:brightness-110 sm:w-auto"
+                          >
+                            <ArrowRight className="size-4" />
+                            Buy again
+                          </button>
+                        </div>
                       );
                     }
                     if (ordered) {

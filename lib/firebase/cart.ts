@@ -64,8 +64,17 @@ export function subscribeCart(uid: string, onChange: (items: CartItem[]) => void
     try {
       const { items } = await cartApi<{ items: CartItem[] }>();
       if (active) onChange(items);
-    } catch {
-      if (active) onChange([]);
+    } catch (cause) {
+      // Do NOT report an empty cart on failure: that showed "Your cart is
+      // empty" for a quota/network error, which looked like data loss. Re-read
+      // once (the token may simply have expired) and only then give up, leaving
+      // the previous items on screen.
+      try {
+        const { items } = await cartApi<{ items: CartItem[] }>();
+        if (active) onChange(items);
+      } catch {
+        console.warn("[cart] could not refresh:", cause instanceof Error ? cause.message : cause);
+      }
     }
   };
 
