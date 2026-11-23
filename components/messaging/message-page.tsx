@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
+import { ArrowLeft, House, ShieldCheck, ShoppingBag, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
 import {
@@ -20,7 +20,6 @@ import { useCartOrderState, CartOrderSummary } from "@/components/messaging/cart
 import type { PublicMessage } from "@/lib/messaging/types";
 import { askForPushOnce } from "@/lib/messaging/push-client";
 import type { PublicConversation } from "@/lib/messaging/types";
-import { cn } from "@/lib/utils";
 
 /**
  * Customer's chat with MT Store at /message.
@@ -166,38 +165,67 @@ export function MessagePage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-11rem)] min-h-[28rem] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border-border bg-surface shadow-sm sm:h-[calc(100dvh-12rem)]">
-      {/* Header */}
-      <header className="flex items-center gap-3 border-b border-border bg-white px-3 py-2.5">
-        <Link
-          href="/cart"
-          aria-label="Back to cart"
-          className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-surface-2 hover:text-ink"
+    // Fills exactly one screen: no page scroll, only the message list scrolls.
+    <div className="mx-auto flex h-[calc(100dvh-0.5rem)] min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-surface sm:h-[calc(100dvh-3rem)] sm:rounded-2xl sm:border sm:border-border sm:shadow-sm">
+      {/* Header — fixed height so typing never reflows it. */}
+      <header className="flex shrink-0 items-center gap-2 border-b border-border bg-white px-2 py-2">
+        {/* Proper back: history if there is any, otherwise the cart. */}
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) router.back();
+            else router.push("/cart");
+          }}
+          aria-label="Go back"
+          className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-surface-2 hover:text-ink active:scale-95"
         >
           <ArrowLeft className="size-4" />
-        </Link>
-        <MtStoreAvatar size={36} online open={identityOpen} onOpenChange={setIdentityOpen} />
+        </button>
+        <MtStoreAvatar size={34} online open={identityOpen} onOpenChange={setIdentityOpen} />
         <div className="min-w-0 flex-1">
           <button
             type="button"
             data-store-identity-trigger
             onClick={() => setIdentityOpen((value) => !value)}
             aria-expanded={identityOpen}
-            className="flex items-center gap-1 text-left text-sm font-extrabold text-ink hover:text-brand"
+            className="flex items-center gap-1 text-left text-[13px] font-extrabold text-ink hover:text-brand"
           >
             {MT_STORE.name}
             <ShieldCheck className="size-3.5 text-brand" aria-label="Official account" />
           </button>
-          <p className="truncate text-[11px] text-ink-soft">
+          <p className="truncate text-[10px] text-ink-soft">
             {conversation?.lastMessage.at ? "Online · replies in minutes" : MT_STORE.tagline}
           </p>
         </div>
-        <Link
-          href="/cart"
-          className="shrink-0 rounded-lg border-border px-2.5 py-1.5 text-[11px] font-semibold text-ink transition hover:border-brand hover:text-brand"
-        >
-          My cart
-        </Link>
+
+        {/* Three quick actions: cart, home, profile. */}
+        <div className="flex shrink-0 items-center gap-1">
+          <Link
+            href="/cart"
+            aria-label="My cart"
+            title="My cart"
+            className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-2 text-[11px] font-bold text-ink transition hover:border-brand hover:text-brand active:scale-95"
+          >
+            <ShoppingBag className="size-4" />
+            <span className="hidden min-[380px]:inline">Cart</span>
+          </Link>
+          <Link
+            href="/"
+            aria-label="Home"
+            title="Home"
+            className="grid size-9 place-items-center rounded-lg border border-border text-ink transition hover:border-brand hover:text-brand active:scale-95"
+          >
+            <House className="size-4" />
+          </Link>
+          <Link
+            href="/profile"
+            aria-label="Your profile"
+            title="Your profile"
+            className="grid size-9 place-items-center rounded-lg border border-border text-ink transition hover:border-brand hover:text-brand active:scale-95"
+          >
+            <UserRound className="size-4" />
+          </Link>
+        </div>
       </header>
 
       {/* Paid vs. remaining, so the customer never has to scroll to find out. */}
@@ -207,8 +235,11 @@ export function MessagePage() {
         </div>
       ) : null}
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-3 py-3">
+      {/* Messages — the ONLY scrolling region, so typing never moves the page. */}
+      <div
+        ref={scrollRef}
+        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-3"
+      >
         {hasMore ? (
           <button
             type="button"
@@ -262,27 +293,25 @@ export function MessagePage() {
         ) : null}
       </div>
 
-      {/* Typing/read hint */}
-      <div className={cn("flex items-center gap-1.5 px-4 pb-1 text-[10px] text-ink-soft", messages.length === 0 && "hidden")}>
-        <Check className="size-3 text-brand" />
-        Messages are seen by the MT Store team
+      {/* Composer + banner are pinned at the bottom with nothing after them, so
+          there is nothing below the install banner to scroll to. */}
+      <div className="shrink-0">
+        <MessageComposer
+          onSend={send}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
+          onOptimistic={optimistic}
+          onRollback={dropOptimistic}
+        />
+
+        {/* Offered only after the customer has actually sent a couple of messages
+            AND answered the notification prompt, so the two never collide. */}
+        <InstallAppBanner
+          messageCount={
+            pushSettled ? messages.filter((message) => message.senderRole === "customer").length : 0
+          }
+        />
       </div>
-
-      <MessageComposer
-        onSend={send}
-        replyTo={replyTo}
-        onCancelReply={() => setReplyTo(null)}
-        onOptimistic={optimistic}
-        onRollback={dropOptimistic}
-      />
-
-      {/* Offered only after the customer has actually sent a couple of messages
-          AND answered the notification prompt, so the two never collide. */}
-      <InstallAppBanner
-        messageCount={
-          pushSettled ? messages.filter((message) => message.senderRole === "customer").length : 0
-        }
-      />
     </div>
   );
 }

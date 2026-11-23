@@ -7,6 +7,7 @@ import { getCurrencyContext } from "@/lib/currency/server";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { FloatingOrderContact } from "@/components/floating-order-contact";
+import { ChromeVisibility } from "@/components/chrome-visibility";
 import { SiteStructuredData } from "@/components/structured-data";
 import { InstallPrompt } from "@/components/install-prompt";
 import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
@@ -120,9 +121,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </a>
         <Providers>
           <CurrencyProvider currency={currency} country={country}>
+            <ChromeVisibility />
             <SiteHeader />
             <main
               id="main-content"
+              data-main
               tabIndex={-1}
               className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6"
             >

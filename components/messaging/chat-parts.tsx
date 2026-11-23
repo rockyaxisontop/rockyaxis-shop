@@ -241,7 +241,7 @@ export function MessageBubble({
       ) : null}
 
       {!mine ? (
-        <div className="flex w-7 shrink-0 justify-center">
+        <div className="flex w-7 shrink-0 grow-0 self-end">
           {showAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -249,8 +249,8 @@ export function MessageBubble({
               alt="MT Store"
               width={28}
               height={28}
-              className="size-7 rounded-full bg-white object-cover"
-              style={{ width: 28, height: 28 }}
+              className="block size-7 shrink-0 rounded-full border border-border bg-white object-cover"
+              style={{ width: 28, height: 28, minWidth: 28, minHeight: 28, aspectRatio: "1 / 1" }}
             />
           ) : null}
         </div>

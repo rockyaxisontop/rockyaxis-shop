@@ -46,7 +46,7 @@ export function SiteFooter() {
   const { locationLabel, countryName } = useCurrency();
 
   return (
-    <footer className="mt-12 border-t border-border bg-white">
+    <footer data-site-footer className="mt-12 border-t border-border bg-white">
       <div className="mx-auto w-full max-w-7xl px-4">
         <div className="grid gap-9 py-10 sm:py-12 md:grid-cols-[1.4fr_1fr_1fr] md:gap-10">
           <section id="about" aria-labelledby="footer-about-title" className="max-w-lg">

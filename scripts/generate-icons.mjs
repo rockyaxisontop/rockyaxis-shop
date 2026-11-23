@@ -143,13 +143,13 @@ async function main() {
     await squareIcon(48, { padding: 0.06, radius: 0.2, markScale: 1 }),
   );
 
-  // Chat avatar for the official MT Store account.
-  //
-  // The logo lockup is navy ink, so it needs a light plate — the same treatment
-  // as the app icon. A full-bleed white plate inside the circle means nothing is
-  // cropped when it is displayed as a round avatar.
-  await writeFile(join(OUT, "mt-store-avatar.png"), await brandAvatar(256));
-  await writeFile(join(OUT, "mt-store-avatar-96.png"), await brandAvatar(96));
+  // Chat avatar, square and tight — the wide "Mt store" wordmark is unreadable
+  // at 28px in a message bubble, so this uses the Mt mark on white.
+  await writeFile(join(OUT, "mt-store-avatar.png"), await squareIcon(256, { padding: 0.12, radius: 0.2, markScale: 0.92 }));
+  await writeFile(join(OUT, "mt-store-avatar-96.png"), await squareIcon(96, { padding: 0.12, radius: 0.2, markScale: 0.92 }));
+
+  // Full wordmark lockup, for the wider contact card where there is room.
+  await writeFile(join(OUT, "mt-store-lockup.png"), await brandAvatar(256));
 
   // Apple touch icon: no transparency, iOS rounds the corners itself.
   await writeFile(join(OUT, "apple-touch-icon.png"), await squareIcon(180, { padding: 0.16 }));

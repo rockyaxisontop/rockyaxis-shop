@@ -130,6 +130,7 @@ export function SiteHeader() {
   return (
     <header
       aria-label="Site header"
+      data-site-header
       className="sticky top-0 z-40 bg-white shadow-[0_1px_0_var(--color-border)]"
     >
       {/* Top info bar — desktop only */}
