@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { searchProducts } from "@/lib/channel3/products";
 import { storePrice } from "@/lib/discount";
+import { cached, clientKey, rateLimit, tooManyRequests } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -15,21 +16,29 @@ export const dynamic = "force-dynamic";
  * full catalogue objects would make typing feel sluggish.
  */
 const cache = new Map<string, { at: number; body: unknown }>();
-const TTL_MS = 5 * 60 * 1000;
-const MAX_ENTRIES = 200;
+const TTL_MS = 30 * 60 * 1000;
+const MAX_ENTRIES = 300;
 
 export async function GET(request: Request) {
   const query = (new URL(request.url).searchParams.get("q") ?? "").trim();
   if (query.length < 2) return NextResponse.json({ suggestions: [] });
 
+  // Typeahead is the easiest way to burn Channel3 credits: cap it per IP.
+  const limit = rateLimit(`suggest:${clientKey(request)}`, 40, 60_000);
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
+
   const key = query.toLowerCase();
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.at < TTL_MS) {
-    return NextResponse.json(cached.body, { headers: { "X-Cache": "hit" } });
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < TTL_MS) {
+    return NextResponse.json(hit.body, {
+      headers: { "X-Cache": "hit", "Cache-Control": "public, max-age=300, stale-while-revalidate=3600" },
+    });
   }
 
   try {
-    const { products } = await searchProducts({ query, limit: 6 });
+    const { products } = await cached(`suggest:${key}`, TTL_MS, () =>
+      searchProducts({ query, limit: 6 }),
+    );
     const suggestions = products.slice(0, 6).map((product) => {
       const offer =
         product.offers?.find((item) => item.availability === "InStock") ?? product.offers?.[0];
@@ -46,7 +55,9 @@ export async function GET(request: Request) {
     const body = { suggestions };
     if (cache.size > MAX_ENTRIES) cache.clear();
     cache.set(key, { at: Date.now(), body });
-    return NextResponse.json(body);
+    return NextResponse.json(body, {
+      headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=3600" },
+    });
   } catch {
     // Never break typing: an empty list is a fine answer.
     return NextResponse.json({ suggestions: [] });

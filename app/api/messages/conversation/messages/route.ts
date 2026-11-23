@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { ApiError, apiErrorResponse, requireUser } from "@/lib/firebase/admin";
 import { listMessages, sendCustomerMessage } from "@/lib/messaging/service";
 import type { Attachment, MessageKind, ReplyPreview } from "@/lib/messaging/types";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
+
+    // Message writes cost Firestore operations; cap them per account.
+    const limit = rateLimit(`send:${clientKey(request, user.uid)}`, 30, 60_000);
+    if (!limit.allowed) return tooManyRequests(limit.retryAfter);
+
     const body = (await request.json().catch(() => ({}))) as {
       kind?: MessageKind;
       text?: string;

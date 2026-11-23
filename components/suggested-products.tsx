@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { useState } from "react";
 import Link from "next/link";
 import type { Product } from "@channel3/sdk/resources";
 
@@ -36,6 +36,8 @@ export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
 
 function ProductTile({ product }: { product: Product }) {
   const { currency } = useCurrency();
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUrl = product.images?.[0]?.url;
   const offers = product.offers ?? [];
   const cheapest = offers.reduce<(typeof offers)[number] | undefined>(
     (best, offer) =>
@@ -51,16 +53,24 @@ function ProductTile({ product }: { product: Product }) {
       href={`/products/${product.id}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md active:opacity-90"
     >
-      <div className="relative aspect-[4/3] bg-surface-2 sm:aspect-square">
-        {product.images?.[0]?.url ? (
-          <Image
-            src={product.images[0].url}
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-2 sm:aspect-square">
+        {imageUrl && !imageFailed ? (
+          // Plain <img>, not next/image: the optimizer fails on some retailer
+          // CDNs and then renders nothing at all. This degrades gracefully.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
             alt={product.title}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => setImageFailed(true)}
           />
-        ) : null}
+        ) : (
+          <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold text-ink-soft">
+            No image
+          </span>
+        )}
         {savings > 0 ? (
           <span className="absolute left-2 top-2 rounded-full bg-save px-2 py-1 text-[10px] font-extrabold text-ink">
             {savings}% off

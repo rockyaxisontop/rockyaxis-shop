@@ -6,6 +6,7 @@ import { ApiError, apiErrorResponse, getAdminDb, requireUser } from "@/lib/fireb
 import { orderedLineKeys } from "@/lib/messaging/orders";
 import { sendOrderMessage } from "@/lib/messaging/service";
 import type { OrderLine } from "@/lib/messaging/types";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,11 @@ type CartRow = {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
+
+    // Placing an order writes several documents — keep it to a sane pace.
+    const limit = rateLimit(`order:${clientKey(request, user.uid)}`, 6, 60_000);
+    if (!limit.allowed) return tooManyRequests(limit.retryAfter);
+
     const body = (await request.json().catch(() => ({}))) as { cartIds?: string[] };
 
     const snapshot = await getAdminDb().collection("carts").doc(user.uid).collection("items").get();

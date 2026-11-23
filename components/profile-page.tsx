@@ -2,14 +2,13 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { verifyBeforeUpdateEmail } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Check, ChevronDown, House, Loader2, LocateFixed, LogOut, MapPin, Pencil, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers";
 import { authErrorMessage, signOutUser } from "@/lib/firebase/auth";
-import { getDb } from "@/lib/firebase/client";
+import { getProfile, saveProfile as saveProfileViaApi } from "@/lib/firebase/profile-client";
 
 type AddressLabel = "Home" | "Work" | "Other";
 
@@ -81,10 +80,9 @@ export function ProfilePage() {
     let active = true;
     setProfileLoading(true);
     setEmailDraft(user.email ?? "");
-    void getDoc(doc(getDb(), "users", user.uid))
-      .then((snapshot) => {
+    void getProfile<Partial<ProfileData>>()
+      .then(({ profile: saved }) => {
         if (!active) return;
-        const saved = snapshot.data() as Partial<ProfileData> | undefined;
         setProfile({
           ...EMPTY_PROFILE,
           ...saved,
@@ -115,13 +113,9 @@ export function ProfilePage() {
     setError("");
     setNotice("");
     try {
-      // `role` and `disabled` are deliberately absent: Firestore rules reject
-      // any client write that touches them (only the server may grant admin).
-      await setDoc(
-        doc(getDb(), "users", user.uid),
-        { ...profile, email: user.email ?? null, updatedAt: serverTimestamp() },
-        { merge: true },
-      );
+      // Saved through the API: the server owns which fields are writable, and
+      // `role`/`disabled` can never be changed from here.
+      await saveProfileViaApi({ ...profile });
       setNotice("Your delivery and profile information has been saved.");
 
       // Sent here to finish a delivery detail? Take them straight back.

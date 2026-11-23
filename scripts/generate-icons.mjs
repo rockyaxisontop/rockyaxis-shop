@@ -121,6 +121,36 @@ async function brandAvatar(size) {
     .toBuffer();
 }
 
+/**
+ * A round chat avatar: the Mt mark on white, clipped to a perfect circle with
+ * transparent corners, so it sits flush inside a `rounded-full` element.
+ */
+async function circularAvatar(size) {
+  const mark = await markTransparent();
+  const inner = Math.round(size * 0.66);
+  const scaled = await sharp(mark)
+    .resize({ width: inner, height: inner, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toBuffer();
+
+  // White disc, then the mark, then everything outside the disc made transparent.
+  const disc = Buffer.from(
+    `<svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#ffffff"/></svg>`,
+  );
+  const keepOnlyDisc = Buffer.from(
+    `<svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff"/></svg>`,
+  );
+
+  const flat = await sharp({ create: { width: size, height: size, channels: 4, background: "#ffffff" } })
+    .composite([{ input: disc }, { input: scaled, gravity: "center" }])
+    .png()
+    .toBuffer();
+
+  return sharp(flat)
+    .composite([{ input: keepOnlyDisc, blend: "dest-in" }])
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
 async function main() {
   await mkdir(OUT, { recursive: true });
 
@@ -143,10 +173,11 @@ async function main() {
     await squareIcon(48, { padding: 0.06, radius: 0.2, markScale: 1 }),
   );
 
-  // Chat avatar, square and tight — the wide "Mt store" wordmark is unreadable
-  // at 28px in a message bubble, so this uses the Mt mark on white.
-  await writeFile(join(OUT, "mt-store-avatar.png"), await squareIcon(256, { padding: 0.12, radius: 0.2, markScale: 0.92 }));
-  await writeFile(join(OUT, "mt-store-avatar-96.png"), await squareIcon(96, { padding: 0.12, radius: 0.2, markScale: 0.92 }));
+  // Chat avatar — a TRUE circle with transparent corners.
+  // A rounded square inside `rounded-full` shows a visible box, which is what
+  // looked wrong; this is clipped to a circle in the PNG itself.
+  await writeFile(join(OUT, "mt-store-avatar.png"), await circularAvatar(256));
+  await writeFile(join(OUT, "mt-store-avatar-96.png"), await circularAvatar(96));
 
   // Full wordmark lockup, for the wider contact card where there is room.
   await writeFile(join(OUT, "mt-store-lockup.png"), await brandAvatar(256));

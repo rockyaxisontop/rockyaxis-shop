@@ -1,8 +1,6 @@
 "use client";
 
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-
-import { getDb } from "@/lib/firebase/client";
+import { getProfile, saveProfile } from "./profile-client";
 
 /** The only role a self-service sign-up can ever hold. */
 export const DEFAULT_ROLE = "user";
@@ -10,25 +8,21 @@ export const DEFAULT_ROLE = "user";
 /**
  * Creates the customer's user document on first sign-in.
  *
- * Every new account is written with `role: "user"`. Admin is never granted here:
- * Firestore rules reject a client write that sets any other role, and only the
- * server (Admin SDK) can raise it. Existing documents are left untouched, so a
- * returning admin is never demoted by signing in again.
+ * Goes through /api/profile, so `users/*` can stay closed to the browser. The
+ * server writes `role: "user"`; an existing document is never overwritten, so a
+ * returning admin is never demoted.
  */
 export async function ensureUserProfile(user: {
   uid: string;
   email: string | null;
   displayName?: string | null;
 }) {
-  const ref = doc(getDb(), "users", user.uid);
-  const snapshot = await getDoc(ref).catch(() => null);
-  if (snapshot?.exists()) return;
-
-  await setDoc(ref, {
-    role: DEFAULT_ROLE,
-    fullName: user.displayName ?? "",
-    email: user.email ?? null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  void user;
+  try {
+    const { profile } = await getProfile();
+    if (profile) return;
+    await saveProfile({ fullName: user.displayName ?? "" });
+  } catch {
+    /* best effort: never block sign-in on this */
+  }
 }

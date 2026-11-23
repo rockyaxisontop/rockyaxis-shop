@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { ApiError, apiErrorResponse, requireUser } from "@/lib/firebase/admin";
 import { listMessages, requireAdmin, sendAdminMessage } from "@/lib/messaging/service";
 import type { Attachment, MessageKind, ReplyPreview } from "@/lib/messaging/types";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ uid
   try {
     const user = await requireUser(request);
     await requireAdmin(user);
+
+    // Generous for a human replying; stops a runaway client loop.
+    const limit = rateLimit(`admin-send:${clientKey(request, user.uid)}`, 60, 60_000);
+    if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
     const { uid } = await params;
     const body = (await request.json().catch(() => ({}))) as {

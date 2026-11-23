@@ -13,27 +13,56 @@ export function GET() {
   // JSON.stringify + escaping `<` keeps the literal safe inside a JS file.
   const config = JSON.stringify(firebaseConfig).replace(/</g, "\\u003c");
 
-  const body = `importScripts("https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/12.0.0/firebase-messaging-compat.js");
+  const body = `importScripts("https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js");
 
 firebase.initializeApp(${config});
-const messaging = firebase.messaging();
+
+let messaging = null;
+try {
+  messaging = firebase.messaging();
+} catch (error) {
+  // Older/unsupported browsers: fall through to the raw push handler below.
+  console.warn("[sw] FCM init failed", error);
+}
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
-// Shown when the tab is closed or in the background.
-messaging.onBackgroundMessage((payload) => {
-  const n = payload.notification || {};
-  const d = payload.data || {};
-  self.registration.showNotification(n.title || "MT Store", {
-    body: n.body || "",
-    icon: "/icon-192.png",
+function show(title, body, url, tag) {
+  return self.registration.showNotification(title || "MT Store", {
+    body: body || "",
+    icon: "/mt-store-avatar-96.png",
     badge: "/favicon-32x32.png",
-    tag: d.tag || undefined,
-    renotify: Boolean(d.tag),
-    data: { url: d.url || "/message" },
+    tag: tag || undefined,
+    renotify: Boolean(tag),
+    data: { url: url || "/message" },
+    vibrate: [80, 40, 80],
   });
+}
+
+// Shown when the tab is closed or in the background.
+if (messaging) {
+  messaging.onBackgroundMessage((payload) => {
+    const n = payload.notification || {};
+    const d = payload.data || {};
+    return show(n.title, n.body, d.url, d.tag);
+  });
+}
+
+// Guaranteed path: a raw push always reaches the worker, even if the FCM
+// helper failed to initialise. Without this, a closed browser can receive the
+// push event and still show nothing.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const n = data.notification || data;
+  const payload = data.data || data;
+  event.waitUntil(show(n.title, n.body, payload.url, payload.tag));
 });
 
 // Focus an existing tab where possible, otherwise open a new one.

@@ -1,6 +1,13 @@
 rules_version = '2';
 
-// Client-only app: every user may read/write only their own documents.
+// Backend-only data model.
+//
+// Every read and write goes through /api/* using the Admin SDK (which bypasses
+// these rules). Nothing in the app talks to Firestore from the browser any more,
+// so a client is denied by default and only the signed-in user's own *safe*
+// documents remain accessible as a fallback.
+//
+// Verified: /api/cart, /api/profile, /api/messages/*, /api/admin/*, /api/freebies/*.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -11,25 +18,10 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
-    // users/{uid} – profile snapshot written right after sign-up.
+    // users/{uid} – SERVER ONLY now (/api/profile). Closed outright so a client
+    // can never read another profile or grant itself a role.
     match /users/{uid} {
-      allow read: if isOwner(uid);
-
-      // A user may save their own profile EXCEPT for the fields that decide
-      // access. `role` and `disabled` can only be changed by the server (Admin
-      // SDK), otherwise anyone could make themselves an administrator by
-      // writing {"role": "admin"} with the Firestore REST API.
-      allow update: if isOwner(uid)
-                    && !request.resource.data.diff(resource.data).affectedKeys()
-                         .hasAny(['role', 'disabled']);
-
-      allow create: if isOwner(uid)
-                    && request.resource.data.get('role', 'user') != 'admin'
-                    && !request.resource.data.keys().hasAny(['disabled']);
-
-      allow delete: if isOwner(uid);
-
-      // Push registration tokens live here for admins.
+      allow read, write: if false;
       match /deviceTokens/{token} {
         allow read, write: if false;
       }
@@ -41,15 +33,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // carts/{uid}/items/{itemId} – live cart, private per user.
+    // carts/{uid}/items/{itemId} – SERVER ONLY now (/api/cart).
     match /carts/{uid}/items/{itemId} {
-      allow read, write: if isOwner(uid);
+      allow read, write: if false;
     }
 
-    // orders/{uid}/history/{orderId} – past orders kept after checkout.
+    // orders/{uid}/history/{orderId} – kept closed; orders flow through the API.
     match /orders/{uid}/history/{orderId} {
-      allow read, create: if isOwner(uid);
-      allow update, delete: if false;
+      allow read, write: if false;
+    }
+
+    // Chat orders (status per reference) — server only.
+    match /chatOrders/{reference} {
+      allow read, write: if false;
     }
 
     // ---------------------------------------------------------------------

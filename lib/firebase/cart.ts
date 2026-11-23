@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  serverTimestamp,
-  setDoc,
-  type Unsubscribe,
-} from "firebase/firestore";
-
-import { getDb } from "./client";
+import { auth } from "@/lib/firebase/client";
 
 export type CartItem = {
   /** Channel3 canonical product id. */
@@ -37,32 +27,78 @@ export function cartItemId(item: Pick<CartItem, "productId" | "options">) {
   return suffix ? `${item.productId}__${suffix}` : item.productId;
 }
 
-function cartCollection(uid: string) {
-  return collection(getDb(), "carts", uid, "items");
+/** Calls our own cart API with the Firebase ID token attached. */
+async function cartApi<T>(init?: RequestInit & { body?: string }): Promise<T> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Sign in to use your cart.");
+  const token = await user.getIdToken();
+  const response = await fetch("/api/cart", {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...init?.headers,
+    },
+  });
+  const body = (await response.json().catch(() => ({}))) as { error?: string };
+  if (!response.ok) throw new Error(body.error ?? "Cart update failed.");
+  return body as T;
 }
 
-/** Live cart subscription. Returns an unsubscribe function. */
+/** A callback that stops the cart subscription. */
+type Unsubscribe = () => void;
+
+/**
+ * Live cart subscription.
+ *
+ * Firestore is closed to the browser now (no read, no write), so this polls our
+ * own API instead of opening an `onSnapshot` listener. The interval is short
+ * while the tab is visible and pauses entirely when it is hidden, which keeps
+ * reads low — the whole point of the backend move.
+ */
 export function subscribeCart(uid: string, onChange: (items: CartItem[]) => void): Unsubscribe {
-  return onSnapshot(cartCollection(uid), (snapshot) => {
-    onChange(snapshot.docs.map((d) => d.data() as CartItem));
-  });
+  void uid; // identity comes from the verified token server-side
+  let active = true;
+
+  const load = async () => {
+    try {
+      const { items } = await cartApi<{ items: CartItem[] }>();
+      if (active) onChange(items);
+    } catch {
+      if (active) onChange([]);
+    }
+  };
+
+  void load();
+  const timer = setInterval(() => {
+    if (document.visibilityState === "visible") void load();
+  }, 15000);
+
+  const onVisible = () => {
+    if (document.visibilityState === "visible") void load();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener("focus", onVisible);
+
+  return () => {
+    active = false;
+    clearInterval(timer);
+    document.removeEventListener("visibilitychange", onVisible);
+    window.removeEventListener("focus", onVisible);
+  };
 }
 
 export async function addToCart(uid: string, item: Omit<CartItem, "quantity"> & { quantity?: number }) {
-  const id = cartItemId(item);
-  const quantity = item.quantity ?? 1;
-  await setDoc(
-    doc(cartCollection(uid), id),
-    { ...item, id, quantity, updatedAt: serverTimestamp() },
-    { merge: true },
-  );
+  void uid;
+  await cartApi({ method: "POST", body: JSON.stringify({ action: "add", item }) });
 }
 
 export async function setCartQuantity(uid: string, id: string, quantity: number) {
-  if (quantity < 1) return removeFromCart(uid, id);
-  await setDoc(doc(cartCollection(uid), id), { quantity, updatedAt: serverTimestamp() }, { merge: true });
+  void uid;
+  await cartApi({ method: "POST", body: JSON.stringify({ action: "quantity", id, quantity }) });
 }
 
 export async function removeFromCart(uid: string, id: string) {
-  await deleteDoc(doc(cartCollection(uid), id));
+  void uid;
+  await cartApi({ method: "POST", body: JSON.stringify({ action: "remove", id }) });
 }

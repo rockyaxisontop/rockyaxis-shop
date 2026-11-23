@@ -1,8 +1,6 @@
 "use client";
 
-import { doc, getDoc } from "firebase/firestore";
-
-import { getDb } from "@/lib/firebase/client";
+import { getProfile } from "@/lib/firebase/profile-client";
 
 /**
  * The delivery details we need before an order can be shipped.
@@ -55,9 +53,11 @@ export function missingDeliveryLabels(missing: RequiredDeliveryField[]): string[
 export async function checkDeliveryProfile(
   uid: string,
 ): Promise<{ complete: boolean; missing: RequiredDeliveryField[] }> {
-  const snapshot = await getDoc(doc(getDb(), "users", uid));
-  const missing = missingDeliveryFields(
-    snapshot.exists() ? (snapshot.data() as Record<string, unknown>) : null,
-  );
+  void uid;
+  // Read through our API — `users/*` is not readable by the browser any more.
+  const { profile } = await getProfile<Record<string, unknown>>().catch(() => ({
+    profile: null as Record<string, unknown> | null,
+  }));
+  const missing = missingDeliveryFields(profile);
   return { complete: missing.length === 0, missing };
 }
