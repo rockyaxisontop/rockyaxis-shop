@@ -94,18 +94,18 @@ export async function listOrdersForCustomer(uid: string): Promise<ChatOrder[]> {
 }
 
 /**
- * Line keys this customer has in an order that is still BEING HANDLED.
+ * Line keys this customer already has in an order that isn't cancelled.
  *
- * Only `sent` and `awaiting_payment` block a re-order: the admin is holding those
- * lines, so letting the customer change or re-send them would desync the order.
- * A `confirmed` order is finished business — the customer may buy the same
- * product again — and `cancelled` frees the line completely.
+ * An ordered line is locked everywhere: the customer cannot change its quantity,
+ * re-send it, or have it counted again in the cart total. Only a cancelled
+ * order frees the line, since otherwise there is no way to recover from a
+ * refused order.
  */
 export async function orderedLineKeys(uid: string): Promise<Set<string>> {
   const orders = await listOrdersForCustomer(uid);
   const keys = new Set<string>();
   for (const order of orders) {
-    if (order.status !== "sent" && order.status !== "awaiting_payment") continue;
+    if (order.status === "cancelled") continue;
     for (const lineId of order.lineIds) keys.add(lineId);
   }
   return keys;

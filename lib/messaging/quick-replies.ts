@@ -1,5 +1,7 @@
 "use client";
 
+import { convertFromUsd, formatLocal } from "@/lib/currency";
+
 /**
  * Canned admin replies.
  *
@@ -106,7 +108,10 @@ export function buildContext(input: {
   phone?: string;
   email?: string | null;
   orderReference?: string | null;
-  orderTotal?: string | null;
+  /** Raw order total in the stored (USD) currency — formatted per visitor. */
+  orderTotalUsd?: number | null;
+  /** Currency to render the total in, e.g. "NPR" from useCurrency(). */
+  currency: string;
 }): QuickMessageContext {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   return {
@@ -115,7 +120,11 @@ export function buildContext(input: {
     phone: input.phone ?? "",
     email: input.email ?? null,
     orderReference: input.orderReference ?? null,
-    orderTotal: input.orderTotal ?? null,
+    // Same formatter as the cart, so a quote in a message matches the cart exactly.
+    orderTotal:
+      input.orderTotalUsd != null
+        ? formatLocal(convertFromUsd(input.orderTotalUsd, input.currency), input.currency)
+        : null,
     storeUrl: origin,
   };
 }

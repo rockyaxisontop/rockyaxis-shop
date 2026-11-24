@@ -30,6 +30,7 @@ import { adminApi } from "@/lib/messaging/client";
 import { CustomerInfoDrawer } from "@/components/admin/customer-info-drawer";
 import { QuickMessagePicker } from "@/components/admin/quick-message-picker";
 import { buildContext } from "@/lib/messaging/quick-replies";
+import { useCurrency } from "@/components/currency-provider";
 import { EnablePushButton } from "@/components/messaging/enable-push-button";
 import type {
   AdminCustomerProfile,
@@ -470,6 +471,10 @@ function AdminChat({
   const [replyTo, setReplyTo] = useState<PublicMessage | null>(null);
   // Customer details power the quick-message templates (address, phone, order).
   const [customer, setCustomer] = useState<AdminCustomerProfile | null>(null);
+  // Messages hidden immediately after an admin deletes them.
+  const [deleted, setDeleted] = useState<Set<string>>(() => new Set());
+  // Quick messages quote prices in the same currency as the rest of the site.
+  const { currency } = useCurrency();
 
   useEffect(() => {
     let active = true;
@@ -606,7 +611,7 @@ function AdminChat({
         {loading && messages.length === 0 ? (
           <p className="py-6 text-center text-xs text-ink-soft">Loading history…</p>
         ) : null}
-        {messages.map((message, index) => {
+        {messages.filter((message) => !deleted.has(message.id)).map((message, index) => {
           const previous = messages[index - 1];
           const showDay =
             !previous || new Date(previous.createdAt).toDateString() !== new Date(message.createdAt).toDateString();
@@ -623,6 +628,21 @@ function AdminChat({
                 viewer="admin"
                 showAvatar={!previous || previous.senderId !== message.senderId}
                 onReply={setReplyTo}
+                onDelete={async (target) => {
+                  // Optimistic removal: the row disappears at once, the server call
+                  // happens behind it.
+                  setDeleted((current) => new Set(current).add(target.id));
+                  try {
+                    await adminApi.deleteMessage(conversation.id, target.id);
+                    onChanged();
+                  } catch {
+                    setDeleted((current) => {
+                      const next = new Set(current);
+                      next.delete(target.id);
+                      return next;
+                    });
+                  }
+                }}
                 orderStatus={
                   message.order ? (orderStatuses[message.order.reference] ?? "sent") : undefined
                 }
@@ -647,9 +667,8 @@ function AdminChat({
               phone: customer?.profile.phoneNumber ?? conversation.customer.phone,
               email: customer?.profile.email ?? conversation.customer.email ?? null,
               orderReference: customer?.orders[0]?.reference ?? null,
-              orderTotal: customer?.orders[0]
-                ? `${customer.orders[0].total.toFixed(2)} ${customer.orders[0].currency}`
-                : null,
+              orderTotalUsd: customer?.orders[0]?.total ?? null,
+              currency,
             })}
             onInsert={insert}
           />

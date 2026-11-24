@@ -58,25 +58,24 @@ export function useCartOrderState() {
 
   /** Any live (non-cancelled) order for this row. */
   /**
-   * A row is only BLOCKED while an order is still in progress.
+   * A row is LOCKED as soon as it belongs to any order that isn't cancelled.
    *
-   * `sent` and `awaiting_payment` mean the admin is holding this line, so it must
-   * not change underneath them. Once an order is `confirmed` (delivered success)
-   * the customer is free to buy the same product again — that's a new purchase,
-   * not a duplicate. `cancelled` also frees the row.
+   * `sent` and `awaiting_payment`: the admin is handling it.
+   * `confirmed`: it was already bought, so it must not be bought or counted twice.
+   * Only `cancelled` frees the row again.
    */
   const isOrdered = (lineKey: string) =>
-    orders.some(
-      (order) =>
-        (order.status === "sent" || order.status === "awaiting_payment") &&
-        order.lineIds.includes(lineKey),
-    );
+    orders.some((order) => order.status !== "cancelled" && order.lineIds.includes(lineKey));
 
-  /** Has this row ever been purchased successfully? (Shown as a badge, not a lock.) */
+  /** Was this row bought and confirmed? (Drives "view order" instead of controls.) */
   const wasPurchased = (lineKey: string) =>
     orders.some((order) => order.status === "confirmed" && order.lineIds.includes(lineKey));
 
-  return { orders, forLine, isOrdered, wasPurchased, failed, refresh };
+  /** The order a row belongs to — used to deep-link "view order details". */
+  const orderFor = (lineKey: string): ChatOrder | undefined =>
+    orders.find((order) => order.status !== "cancelled" && order.lineIds.includes(lineKey));
+
+  return { orders, forLine, isOrdered, wasPurchased, orderFor, failed, refresh };
 }
 
 /** Key the server uses to match a cart row to its order line. */

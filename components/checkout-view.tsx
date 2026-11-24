@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { STORE_DISCOUNT_PERCENT, storeLineTotal, storeListPrice, storePrice } from "@/lib/discount";
 import { formatMoney } from "@/lib/format";
 import { cartItemId, subscribeCart, type CartItem } from "@/lib/firebase/cart";
+import { cn } from "@/lib/utils";
 
 /** Orders are sent to MT Store's in-app chat so the team can confirm details. */
 export function CheckoutView() {
@@ -50,20 +51,27 @@ export function CheckoutView() {
   }, [user]);
 
   // One total, in the visitor's currency — cart prices are USD internally.
-  const { orders: chatOrders, forLine, isOrdered } = useCartOrderState();
+  const { orders: chatOrders, forLine, isOrdered, orderFor } = useCartOrderState();
+
+  // Products already in an order are excluded from the money: they are paid (or
+  // being paid) in the chat and must never be charged twice here.
+  const payable = items.filter(
+    (item) => !isOrdered(cartLineKey(item.productId, item.options)),
+  );
 
   const totals = useMemo(
     () => ({
-      list: items.reduce(
+      list: payable.reduce(
         (sum, item) => sum + storeListPrice(item.price, currency) * item.quantity,
         0,
       ),
-      pay: items.reduce(
+      pay: payable.reduce(
         (sum, item) => sum + storeLineTotal(item.price, item.quantity, currency),
         0,
       ),
     }),
-    [items, currency],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, currency, isOrdered],
   );
 
   if (loading || (user && !ready)) {
@@ -208,45 +216,50 @@ export function CheckoutView() {
                   </div>
 
                   {/* The action reflects this row's order state:
-                      - confirmed  → locked "Order success" (can't order twice)
-                      - sent/awaiting payment → disabled "Order sent"
-                      - no order   → "Buy this item" */}
+                      - any live order → locked, with "View order details"
+                      - cancelled      → can be ordered again
+                      - no order       → "Buy this item" */}
                   {(() => {
                     const lineKey = cartLineKey(item.productId, item.options);
-                    const order = forLine(lineKey);
                     const ordered = isOrdered(lineKey);
-                    // A completed order is finished business: the customer may
-                    // buy the same product again, so this re-enables ordering.
-                    if (order?.status === "confirmed" && !ordered) {
-                      return (
-                        <div className="flex w-full shrink-0 flex-col gap-1.5 sm:w-auto">
-                          <span className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-stock-bg px-3 py-1 text-[11px] font-extrabold text-stock ring-1 ring-stock/30">
-                            <CheckCircle2 className="size-3.5" />
-                            Order success
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => router.push(`/message?order=auto&item=${encodeURIComponent(cartItemId(item))}`)}
-                            aria-label={`Buy ${item.title} again in chat`}
-                            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white transition hover:brightness-110 sm:w-auto"
-                          >
-                            <ArrowRight className="size-4" />
-                            Buy again
-                          </button>
-                        </div>
-                      );
-                    }
+                    const order = orderFor(lineKey);
+
+                    // Ordered (sent, awaiting payment OR confirmed) is LOCKED:
+                    // quantity and purchase are both disabled, and the customer is
+                    // sent to the order page instead of being able to buy twice.
                     if (ordered) {
                       return (
-                        <button
-                          type="button"
-                          disabled
-                          aria-label={`${item.title} is already in an order`}
-                          className="inline-flex h-11 w-full shrink-0 cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-2 px-4 text-sm font-bold text-ink-soft ring-1 ring-border sm:w-auto"
-                        >
-                          <Clock3 className="size-4" />
-                          Order sent
-                        </button>
+                        <div className="flex w-full shrink-0 flex-col gap-1.5 sm:w-auto">
+                          <span
+                            className={cn(
+                              "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1 text-[11px] font-extrabold ring-1",
+                              order?.status === "confirmed"
+                                ? "bg-stock-bg text-stock ring-stock/30"
+                                : "bg-surface-2 text-ink-soft ring-border",
+                            )}
+                          >
+                            {order?.status === "confirmed" ? (
+                              <>
+                                <CheckCircle2 className="size-3.5" />
+                                Order success
+                              </>
+                            ) : (
+                              <>
+                                <Clock3 className="size-3.5" />
+                                Order sent
+                              </>
+                            )}
+                          </span>
+                          {order ? (
+                            <Link
+                              href={`/orders/${encodeURIComponent(order.reference)}`}
+                              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-brand bg-white px-4 text-sm font-bold text-brand transition hover:bg-brand-tint"
+                            >
+                              View order details
+                              <ArrowRight className="size-4" />
+                            </Link>
+                          ) : null}
+                        </div>
                       );
                     }
                     if (order?.status === "cancelled") {
@@ -299,6 +312,13 @@ export function CheckoutView() {
                   <dt className="font-semibold text-ink">Your total ({currency})</dt>
                   <dd className="font-bold text-ink">{formatMoney(totals.pay, currency)}</dd>
                 </div>
+                {items.length > payable.length ? (
+                  <p className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-[11px] leading-4 text-ink-soft">
+                    {items.length - payable.length} item
+                    {items.length - payable.length === 1 ? " is" : "s are"} already in an order and not
+                    charged again. Open the order below to see their status.
+                  </p>
+                ) : null}
                 <div className="flex justify-between gap-3 text-sm">
                   <dt className="text-ink-soft">Delivery</dt>
                   <dd className="text-right font-medium text-ink-soft">

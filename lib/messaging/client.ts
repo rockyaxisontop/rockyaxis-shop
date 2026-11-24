@@ -115,6 +115,13 @@ export const adminApi = {
       body: JSON.stringify({ status }),
     }),
 
+  /** Admin: remove a message from a conversation. */
+  deleteMessage: (uid: string, messageId: string) =>
+    call<{ ok: true }>(
+      `/api/admin/conversations/${encodeURIComponent(uid)}/messages/${encodeURIComponent(messageId)}`,
+      { method: "DELETE" },
+    ),
+
   /** Full profile the customer filled in, plus their orders. */
   profile: (uid: string) =>
     call<AdminCustomerProfile>(`/api/admin/conversations/${encodeURIComponent(uid)}/profile`),

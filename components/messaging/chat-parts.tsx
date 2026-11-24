@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Download, FileText, ImageIcon, Link2, Loader2, Mic, Reply, Video, X } from "lucide-react";
+import { CheckCircle2, Download, FileText, ImageIcon, Link2, Loader2, Mic, Reply, Trash2, Video, X } from "lucide-react";
 
 import { messageApi, adminApi } from "@/lib/messaging/client";
 import { useCurrency } from "@/components/currency-provider";
@@ -193,6 +193,8 @@ type BubbleProps = {
   showAvatar: boolean;
   /** Called when the viewer chooses to reply to this message. */
   onReply?: (message: PublicMessage) => void;
+  /** Admin only: delete this message. */
+  onDelete?: (message: PublicMessage) => void;
   /** Admin: current status of this order, if it is an order message. */
   orderStatus?: ChatOrderStatus;
   /** Admin: change that status. */
@@ -204,6 +206,7 @@ export function MessageBubble({
   mine,
   showAvatar,
   onReply,
+  onDelete,
   orderStatus,
   onOrderStatusChange,
 }: BubbleProps) {
@@ -237,6 +240,18 @@ export function MessageBubble({
           className="mb-4 grid size-7 shrink-0 place-items-center rounded-full text-ink-soft opacity-60 transition hover:bg-surface-2 hover:text-brand focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
         >
           <Reply className="size-3.5" />
+        </button>
+      ) : null}
+
+      {onDelete ? (
+        <button
+          type="button"
+          onClick={() => onDelete(message)}
+          aria-label="Delete this message"
+          title="Delete message"
+          className="mb-4 grid size-7 shrink-0 place-items-center rounded-full text-ink-soft opacity-60 transition hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+        >
+          <Trash2 className="size-3.5" />
         </button>
       ) : null}
 

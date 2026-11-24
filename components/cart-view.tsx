@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Gift, House, LockKeyhole, MapPin, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
+import { Gift, House, LockKeyhole, MapPin, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck, ArrowRight } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
 import {
@@ -34,7 +34,7 @@ export function CartView() {
   const [ready, setReady] = useState(false);
   const { campaigns } = useFreebieCampaigns(Boolean(user));
   // Must be called unconditionally, before any early return.
-  const { orders: chatOrders, forLine, isOrdered, failed } = useCartOrderState();
+  const { orders: chatOrders, forLine, isOrdered, orderFor, failed } = useCartOrderState();
 
   useEffect(() => {
     if (!user) {
@@ -81,16 +81,23 @@ export function CartView() {
 
   // Cart items store USD prices; everything shown is converted to the visitor's currency.
   const currency = localCurrency;
-  const listTotal = items.reduce(
+
+  // Lines already in an order are EXCLUDED from the money: they were paid (or are
+  // being paid) in the chat, so counting them again would double-charge.
+  const lineKeyOf = (item: CartItem) => cartLineKey(item.productId, item.options);
+  const payable = items.filter((item) => !isOrdered(lineKeyOf(item)));
+  const orderedItems = items.filter((item) => isOrdered(lineKeyOf(item)));
+
+  const listTotal = payable.reduce(
     (sum, item) => sum + storeListPrice(item.price, currency) * item.quantity,
     0,
   );
-  const total = items.reduce(
+  const total = payable.reduce(
     (sum, item) => sum + storeLineTotal(item.price, item.quantity, currency),
     0,
   );
   const storeSavingsValue = listTotal - total;
-  const unlocked = items.filter((item) => campaigns[item.productId]?.status === "completed");
+  const unlocked = payable.filter((item) => campaigns[item.productId]?.status === "completed");
   const unlockedValue = unlocked.reduce(
     (sum, item) => sum + storeLineTotal(item.price, item.quantity, currency),
     0,
@@ -104,6 +111,7 @@ export function CartView() {
           <p className="text-sm text-ink-soft">
             {items.length} {items.length === 1 ? "item" : "items"}
             {unlocked.length > 0 ? ` · ${unlocked.length} unlocked free` : ""}
+            {orderedItems.length > 0 ? ` · ${orderedItems.length} already ordered` : ""}
           </p>
         </div>
         <HomeLink />
@@ -225,20 +233,29 @@ export function CartView() {
 
                   <div className="flex shrink-0 flex-col items-end justify-between gap-2">
                     {(() => {
-                      // Locked ONLY while the admin is handling the line. A
-                      // confirmed order unlocks it so the product can be bought
-                      // again — that's a legitimate repeat purchase.
+                      // An ordered line is LOCKED — quantity and remove are gone.
+                      // The customer gets a link to the order instead, so the
+                      // status and details live in one clear place.
                       const lineKey = cartLineKey(item.productId, item.options);
                       const locked = isOrdered(lineKey);
+                      const order = orderFor(lineKey);
 
                       if (locked) {
                         return (
-                          <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-col items-end gap-1.5">
                             <span className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2 py-1 text-[11px] font-bold text-ink-soft ring-1 ring-border">
                               <LockKeyhole className="size-3" />
                               Qty {item.quantity}
                             </span>
-                            <span className="text-[10px] text-ink-soft">In progress in chat</span>
+                            {order ? (
+                              <Link
+                                href={`/orders/${encodeURIComponent(order.reference)}`}
+                                className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-white px-2 py-1 text-[10px] font-bold text-brand transition hover:bg-brand-tint"
+                              >
+                                View order
+                                <ArrowRight className="size-3" />
+                              </Link>
+                            ) : null}
                           </div>
                         );
                       }
