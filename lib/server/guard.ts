@@ -93,11 +93,21 @@ export async function cached<T>(
   return value;
 }
 
-/** Drops a cache entry (used after writes that change the cached data). */
+/**
+ * Drops a cache entry (used after writes that change the cached data).
+ *
+ * Exported as a tiny dedicated helper so route handlers can invalidate the
+ * order list without importing the generic cache internals.
+ */
 export function invalidate(keyPrefix: string) {
   for (const key of store.keys()) {
     if (key.startsWith(keyPrefix)) store.delete(key);
   }
+}
+
+/** The customer's order list is cached; drop it after any write to an order. */
+export function invalidateOrders(uid: string) {
+  invalidate(`orders:${uid}`);
 }
 
 /** Standard 429 response with a Retry-After header. */

@@ -6,7 +6,7 @@ import { ApiError, apiErrorResponse, getAdminDb, requireUser } from "@/lib/fireb
 import { orderedLineKeys } from "@/lib/messaging/orders";
 import { sendOrderMessage } from "@/lib/messaging/service";
 import type { OrderLine } from "@/lib/messaging/types";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/server/guard";
+import { clientKey, invalidateOrders, rateLimit, tooManyRequests } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +93,9 @@ export async function POST(request: Request) {
       { reference, lines, totals, currency },
       reference,
     );
+
+    // A new order appears in the customer's cart status straight away.
+    invalidateOrders(user.uid);
 
     return NextResponse.json({ message, duplicated, conversationId: user.uid });
   } catch (error) {

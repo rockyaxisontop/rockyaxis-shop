@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { ApiError, apiErrorResponse, requireUser } from "@/lib/firebase/admin";
 import { setOrderStatus, type ChatOrderStatus } from "@/lib/messaging/orders";
 import { requireAdmin } from "@/lib/messaging/service";
+import { invalidateOrders } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,10 @@ export async function POST(
     if (!status) throw new ApiError("A valid status is required.", 400);
 
     const order = await setOrderStatus("admin", reference, status, user);
+
+    // The customer's cached order list is now stale — drop it so their next
+    // poll sees the new status immediately instead of up to 30s later.
+    invalidateOrders(order.customerUid);
 
     // Tell the customer their order moved on. Fire-and-forget: a push failure
     // must never make the status change itself fail.

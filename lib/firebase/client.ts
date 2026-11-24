@@ -2,38 +2,27 @@
 
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-import {
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentSingleTabManager,
-  type Firestore,
-} from "firebase/firestore";
 
 import { firebaseConfig } from "./config";
 
 /**
- * Firebase runs directly from the browser – there is no backend.
- * Security is enforced by Firebase Auth + Firestore Security Rules.
+ * Firebase on the client is used for ONE thing: authentication.
+ *
+ * All data (cart, profile, messages, orders, freebies) goes through our own API
+ * routes with the Admin SDK, so Firestore rules can deny every client read and
+ * write outright. Keeping Firestore out of the bundle means the browser cannot
+ * even attempt a direct query.
  */
 export const firebaseApp: FirebaseApp = getApps()[0] ?? initializeApp(firebaseConfig);
 
 export const auth: Auth = getAuth(firebaseApp);
 
-let firestore: Firestore | undefined;
-
-/** Firestore with an offline cache shared across the tab (fast repeat loads). */
-export function getDb(): Firestore {
-  if (firestore) return firestore;
-
-  try {
-    firestore = initializeFirestore(firebaseApp, {
-      localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) }),
-    });
-  } catch {
-    // Already initialized (e.g. under React Strict Mode double-invocation or HMR).
-    firestore = getFirestore(firebaseApp);
-  }
-
-  return firestore;
+/**
+ * Kept only so older imports don't break. Any remaining call is a bug: data
+ * must go through `/api/*`. Throws loudly instead of silently using stale rules.
+ */
+export function getDb(): never {
+  throw new Error(
+    "Direct Firestore access was removed. Use the /api routes — the browser has no read or write access.",
+  );
 }

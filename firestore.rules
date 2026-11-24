@@ -1,89 +1,26 @@
 rules_version = '2';
 
-// Backend-only data model.
+// ============================================================================
+// MT Store — Firestore is BACKEND ONLY.
 //
-// Every read and write goes through /api/* using the Admin SDK (which bypasses
-// these rules). Nothing in the app talks to Firestore from the browser any more,
-// so a client is denied by default and only the signed-in user's own *safe*
-// documents remain accessible as a fallback.
+// The browser has NO read and NO write access to anything. Every operation goes
+// through our own API routes (/api/*) which use the Firebase Admin SDK. The
+// Admin SDK bypasses these rules entirely, so this one deny rule is enough.
 //
-// Verified: /api/cart, /api/profile, /api/messages/*, /api/admin/*, /api/freebies/*.
+// Why a blanket deny instead of per-collection rules:
+//   • a new collection can never be accidentally left readable;
+//   • a bug in client code fails closed with PERMISSION_DENIED, not silently
+//     exposing data;
+//   • there is exactly one place to reason about, which is easier to audit.
+//
+// Collections in use (all server-only):
+//   users, carts, orders, chatOrders, conversations (+ messages, deviceTokens),
+//   freebieCampaigns, freebieReferrals, freebieOrders, admins
+// ============================================================================
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
-
-    // users/{uid} – SERVER ONLY now (/api/profile). Closed outright so a client
-    // can never read another profile or grant itself a role.
-    match /users/{uid} {
+    match /{document=**} {
       allow read, write: if false;
-      match /deviceTokens/{token} {
-        allow read, write: if false;
-      }
-    }
-
-    // admins/{uid} – legacy allow-list. Kept closed; the admin role now lives on
-    // users/{uid}.role, which only the server can set.
-    match /admins/{uid} {
-      allow read, write: if false;
-    }
-
-    // carts/{uid}/items/{itemId} – SERVER ONLY now (/api/cart).
-    match /carts/{uid}/items/{itemId} {
-      allow read, write: if false;
-    }
-
-    // orders/{uid}/history/{orderId} – kept closed; orders flow through the API.
-    match /orders/{uid}/history/{orderId} {
-      allow read, write: if false;
-    }
-
-    // Chat orders (status per reference) — server only.
-    match /chatOrders/{reference} {
-      allow read, write: if false;
-    }
-
-    // ---------------------------------------------------------------------
-    // Freebie referral system — SERVER ONLY.
-    //
-    // Every read and write goes through /api/freebies/* using the Admin SDK,
-    // which bypasses these rules. Clients are denied outright so nobody can
-    // forge a referral count, mark a campaign complete, or read someone
-    // else's progress by calling the Firestore REST API directly.
-    // ---------------------------------------------------------------------
-    match /freebieCampaigns/{campaignId} {
-      allow read, write: if false;
-    }
-
-    match /freebieReferrals/{referralId} {
-      allow read, write: if false;
-    }
-
-    match /freebieOrders/{orderId} {
-      allow read, write: if false;
-    }
-
-    // ---------------------------------------------------------------------
-    // Internal messenger — SERVER ONLY.
-    //
-    // All access goes through /api/messages/* and /api/admin/* using the Admin
-    // SDK. Clients are denied outright so nobody can read another customer's
-    // messages, forge read receipts or clear their own unread count.
-    // ---------------------------------------------------------------------
-    match /conversations/{conversationId} {
-      allow read, write: if false;
-      match /messages/{messageId} {
-        allow read, write: if false;
-      }
-      // Push tokens; registered through our API only.
-      match /deviceTokens/{token} {
-        allow read, write: if false;
-      }
     }
   }
 }

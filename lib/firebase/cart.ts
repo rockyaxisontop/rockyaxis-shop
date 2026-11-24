@@ -49,65 +49,100 @@ async function cartApi<T>(init?: RequestInit & { body?: string }): Promise<T> {
 type Unsubscribe = () => void;
 
 /**
- * Live cart subscription.
+ * One shared poller for the whole page.
  *
- * Firestore is closed to the browser now (no read, no write), so this polls our
- * own API instead of opening an `onSnapshot` listener. The interval is short
- * while the tab is visible and pauses entirely when it is hidden, which keeps
- * reads low — the whole point of the backend move.
+ * The cart page previously mounted TWO independent subscribers (the cart itself
+ * and the freebie panel), each polling every 15 seconds — double the Firestore
+ * reads for no benefit. All subscribers now share a single timer and a single
+ * request, and every mutation refreshes it immediately.
  */
-export function subscribeCart(uid: string, onChange: (items: CartItem[]) => void): Unsubscribe {
-  void uid; // identity comes from the verified token server-side
-  let active = true;
+const listeners: Set<(items: CartItem[]) => void> = new Set();
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let inFlight: Promise<void> | null = null;
+const lastItems: { value: CartItem[] } = { value: [] };
 
-  const load = async () => {
+async function fetchCart() {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
     try {
       const { items } = await cartApi<{ items: CartItem[] }>();
-      if (active) onChange(items);
-    } catch (cause) {
-      // Do NOT report an empty cart on failure: that showed "Your cart is
-      // empty" for a quota/network error, which looked like data loss. Re-read
-      // once (the token may simply have expired) and only then give up, leaving
-      // the previous items on screen.
-      try {
-        const { items } = await cartApi<{ items: CartItem[] }>();
-        if (active) onChange(items);
-      } catch {
-        console.warn("[cart] could not refresh:", cause instanceof Error ? cause.message : cause);
-      }
+      lastItems.value = items;
+      listeners.forEach((listener) => listener(items));
+    } catch {
+      // Keep the last known items — never render "empty" because a request
+      // failed. A quota or network blip is not an empty cart.
+      console.warn("[cart] refresh failed; keeping the last known cart");
+    } finally {
+      inFlight = null;
     }
-  };
+  })();
+  return inFlight;
+}
 
-  void load();
-  const timer = setInterval(() => {
-    if (document.visibilityState === "visible") void load();
-  }, 15000);
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(() => {
+    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      void fetchCart();
+    }
+  }, 60000);
+}
+
+function stopPolling() {
+  if (!pollTimer) return;
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+/** Refresh the shared cart now (called after every mutation). */
+export function refreshCart() {
+  return fetchCart();
+}
+
+/**
+ * Cart subscription.
+ *
+ * Loads once, then refreshes: every 60s while visible, whenever the tab regains
+ * focus, and immediately after any cart mutation. Deliberately not a live
+ * listener — that is what made the read volume unaffordable.
+ */
+export function subscribeCart(uid: string, onChange: (items: CartItem[]) => void): Unsubscribe {
+  void uid; // identity comes from the verified token, server-side
+  listeners.add(onChange);
+  if (lastItems.value.length > 0) onChange(lastItems.value);
+
+  void fetchCart();
+  startPolling();
 
   const onVisible = () => {
-    if (document.visibilityState === "visible") void load();
+    if (document.visibilityState === "visible") void fetchCart();
   };
-  document.addEventListener("visibilitychange", onVisible);
   window.addEventListener("focus", onVisible);
 
   return () => {
-    active = false;
-    clearInterval(timer);
-    document.removeEventListener("visibilitychange", onVisible);
+    listeners.delete(onChange);
     window.removeEventListener("focus", onVisible);
+    // Stop polling once nobody is listening (leaving the cart page).
+    if (listeners.size === 0) {
+      stopPolling();
+    }
   };
 }
 
 export async function addToCart(uid: string, item: Omit<CartItem, "quantity"> & { quantity?: number }) {
   void uid;
   await cartApi({ method: "POST", body: JSON.stringify({ action: "add", item }) });
+  await refreshCart();
 }
 
 export async function setCartQuantity(uid: string, id: string, quantity: number) {
   void uid;
   await cartApi({ method: "POST", body: JSON.stringify({ action: "quantity", id, quantity }) });
+  await refreshCart();
 }
 
 export async function removeFromCart(uid: string, id: string) {
   void uid;
   await cartApi({ method: "POST", body: JSON.stringify({ action: "remove", id }) });
+  await refreshCart();
 }

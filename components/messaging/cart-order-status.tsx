@@ -32,14 +32,16 @@ export function useCartOrderState() {
 
   useEffect(() => {
     void refresh();
-    // Refresh promptly: an order the admin just confirmed should appear without
-    // the customer reloading the page.
+    // 20s rather than 5s: this runs on both the cart and checkout pages, and
+    // polling that often is what exhausted the Firestore quota. Status also
+    // refreshes on tab focus, which covers the realistic case.
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
-    }, 5000);
+    }, 20000);
 
-    // Any change of tab/network state is a good moment to catch up.
-    const onWake = () => void refresh();
+    const onWake = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
     window.addEventListener("focus", onWake);
     document.addEventListener("visibilitychange", onWake);
 
