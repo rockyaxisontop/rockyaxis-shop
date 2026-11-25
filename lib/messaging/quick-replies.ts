@@ -1,6 +1,7 @@
 "use client";
 
 import { convertFromUsd, formatLocal } from "@/lib/currency";
+import { storePrice } from "@/lib/discount";
 
 /**
  * Canned admin replies.
@@ -123,7 +124,10 @@ export function buildContext(input: {
     // Same formatter as the cart, so a quote in a message matches the cart exactly.
     orderTotal:
       input.orderTotalUsd != null
-        ? formatLocal(convertFromUsd(input.orderTotalUsd, input.currency), input.currency)
+        ? formatLocal(
+            convertFromUsd(storePrice(input.orderTotalUsd), input.currency),
+            input.currency,
+          )
         : null,
     storeUrl: origin,
   };

@@ -34,7 +34,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ refe
     return NextResponse.json({
       order,
       items: payload?.lines ?? [],
+      // `totals` are the raw (pre-discount) sums stored on the message; the page
+      // charges `storeLineTotal` so the figure matches cart and checkout.
       totals: payload?.totals ?? { [order.currency]: order.total },
+      deliveryEstimate: "24–48 hours",
+      confirmedAt: order.confirmedAt,
+      createdAt: order.createdAt,
     });
   } catch (error) {
     return apiErrorResponse(error);

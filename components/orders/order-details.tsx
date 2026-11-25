@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle2, Clock3, Loader2, PackageCheck, ShoppingBag, XC
 import { useCurrency } from "@/components/currency-provider";
 import { auth } from "@/lib/firebase/client";
 import { convertFromUsd, formatLocal } from "@/lib/currency";
-import { storeLineTotal, storeListPrice } from "@/lib/discount";
+import { storeLineTotal, storeListPrice, storePrice } from "@/lib/discount";
 import type { ChatOrderStatus } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";
 
@@ -41,19 +41,19 @@ const STATUS: Record<
 > = {
   sent: {
     label: "Order sent",
-    note: "MT Store has received your order and is reviewing it. We'll confirm here and in the chat.",
+    note: "MT Store has received your order and is reviewing it. Your order will reach you in under 24–48 hours once payment is confirmed.",
     icon: PackageCheck,
     className: "bg-[#fff6ef] text-[#b34a12] ring-[#f36d25]/30",
   },
   awaiting_payment: {
-    label: "Payment pending",
-    note: "MT Store accepted your order. Complete the payment in the chat and we'll dispatch right away.",
+    label: "Payment request sent",
+    note: "MT Store accepted your order and sent a payment request in the chat. Your order will reach you in under 24–48 hours after payment.",
     icon: Clock3,
     className: "bg-brand-tint text-brand ring-brand/30",
   },
   confirmed: {
     label: "Order success",
-    note: "Paid and confirmed. Your order is being prepared for delivery.",
+    note: "Payment confirmed. Your order is being prepared and will reach you in under 24–48 hours.",
     icon: CheckCircle2,
     className: "bg-stock-bg text-stock ring-stock/30",
   },
@@ -64,6 +64,20 @@ const STATUS: Record<
     className: "bg-destructive/5 text-destructive ring-destructive/30",
   },
 };
+
+/** Human date + time for the timeline, in the visitor's own locale. */
+function stamp(value: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 /** Read-only order page — the destination of every "View order" link. */
 export function OrderDetails({ reference }: { reference: string }) {
@@ -123,8 +137,17 @@ export function OrderDetails({ reference }: { reference: string }) {
   const meta = STATUS[order.status];
   const Icon = meta.icon;
 
-  // Same conversion + rounding as the cart, so the figure matches exactly.
-  const totalLocal = formatLocal(convertFromUsd(order.total, currency), currency);
+  // Same maths as the cart and checkout: the 80% store price per line, in the
+  // visitor's currency, summed — never the raw source price on the order.
+  const totalLocal = formatLocal(
+    items.length > 0
+      ? items.reduce(
+          (sum, item) => sum + storeLineTotal(item.price, item.quantity, currency),
+          0,
+        )
+      : storePrice(order.total, currency),
+    currency,
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
@@ -177,10 +200,10 @@ export function OrderDetails({ reference }: { reference: string }) {
                 ) : null}
                 <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
                   <span className="text-sm font-bold text-ink">
-                    {formatLocal(convertFromUsd(storeLineTotal(item.price, item.quantity), currency), currency)}
+                    {formatLocal(storeLineTotal(item.price, item.quantity, currency), currency)}
                   </span>
                   <span className="text-[11px] text-ink-soft line-through">
-                    {formatLocal(convertFromUsd(storeListPrice(item.price) * item.quantity, currency), currency)}
+                    {formatLocal(storeListPrice(item.price, currency) * item.quantity, currency)}
                   </span>
                   <span className="text-[11px] text-ink-soft">Qty {item.quantity}</span>
                 </p>
@@ -203,6 +226,32 @@ export function OrderDetails({ reference }: { reference: string }) {
           <span>Total</span>
           <span>{totalLocal}</span>
         </div>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-border bg-white">
+        <h2 className="border-b border-border px-4 py-2.5 text-sm font-bold text-ink">
+          Order timeline
+        </h2>
+        <dl className="divide-y divide-border text-xs">
+          <div className="flex items-start justify-between gap-3 px-4 py-2.5">
+            <dt className="text-ink-soft">Order placed</dt>
+            <dd className="text-right font-semibold text-ink">{stamp(order.createdAt)}</dd>
+          </div>
+          {order.confirmedAt ? (
+            <div className="flex items-start justify-between gap-3 px-4 py-2.5">
+              <dt className="text-ink-soft">Payment confirmed</dt>
+              <dd className="text-right font-semibold text-stock">{stamp(order.confirmedAt)}</dd>
+            </div>
+          ) : null}
+          <div className="flex items-start justify-between gap-3 px-4 py-2.5">
+            <dt className="text-ink-soft">Estimated delivery</dt>
+            <dd className="text-right font-semibold text-ink">Under 24–48 hours</dd>
+          </div>
+          <div className="flex items-start justify-between gap-3 px-4 py-2.5">
+            <dt className="text-ink-soft">Status</dt>
+            <dd className="text-right font-semibold text-ink">{meta.label}</dd>
+          </div>
+        </dl>
       </section>
 
       <p className="flex items-center gap-1.5 px-1 text-[11px] text-ink-soft">

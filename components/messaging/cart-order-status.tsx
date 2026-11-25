@@ -54,28 +54,46 @@ export function useCartOrderState() {
 
   /** The newest order containing this exact cart row, if any. */
   const forLine = (lineKey: string): ChatOrder | undefined =>
-    orders.find((order) => order.lineIds.includes(lineKey));
+    orders
+      .filter((order) => order.status !== "cancelled" && order.lineIds.includes(lineKey))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
 
-  /** Any live (non-cancelled) order for this row. */
+  /** Statuses that mean the row has been bought and the money is settled. */
+  const PAID: ChatOrderStatus[] = ["confirmed"];
+  /** Statuses where an order exists but the money is still owed. */
+  const IN_PROGRESS: ChatOrderStatus[] = ["sent", "awaiting_payment"];
+
   /**
-   * A row is LOCKED as soon as it belongs to any order that isn't cancelled.
+   * PAID: the row was bought and the order is settled (`confirmed` / delivered).
    *
-   * `sent` and `awaiting_payment`: the admin is handling it.
-   * `confirmed`: it was already bought, so it must not be bought or counted twice.
-   * Only `cancelled` frees the row again.
+   * Only these are excluded from the cart/checkout money — the customer has
+   * already paid for them, so charging again would double-bill. They are also
+   * the only rows that show "View order".
    */
-  const isOrdered = (lineKey: string) =>
-    orders.some((order) => order.status !== "cancelled" && order.lineIds.includes(lineKey));
+  const isPaid = (lineKey: string) =>
+    orders.some((order) => PAID.includes(order.status) && order.lineIds.includes(lineKey));
 
-  /** Was this row bought and confirmed? (Drives "view order" instead of controls.) */
-  const wasPurchased = (lineKey: string) =>
-    orders.some((order) => order.status === "confirmed" && order.lineIds.includes(lineKey));
+  /**
+   * IN PROGRESS: an order exists but is not paid yet (`sent` /
+   * `awaiting_payment`). These are still counted in the total — the customer
+   * still has to pay them — but they cannot be re-ordered or re-sent.
+   */
+  const isInProgress = (lineKey: string) =>
+    orders.some(
+      (order) => IN_PROGRESS.includes(order.status) && order.lineIds.includes(lineKey),
+    );
+
+  /**
+   * LOCKED: no new order can be created for this row. Covers both paid and
+   * in-progress; only `cancelled` frees a row again.
+   */
+  const isOrdered = (lineKey: string) => isPaid(lineKey) || isInProgress(lineKey);
 
   /** The order a row belongs to — used to deep-link "view order details". */
   const orderFor = (lineKey: string): ChatOrder | undefined =>
     orders.find((order) => order.status !== "cancelled" && order.lineIds.includes(lineKey));
 
-  return { orders, forLine, isOrdered, wasPurchased, orderFor, failed, refresh };
+  return { orders, forLine, isPaid, isInProgress, isOrdered, orderFor, failed, refresh };
 }
 
 /** Key the server uses to match a cart row to its order line. */

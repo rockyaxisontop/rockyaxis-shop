@@ -34,7 +34,8 @@ export function CartView() {
   const [ready, setReady] = useState(false);
   const { campaigns } = useFreebieCampaigns(Boolean(user));
   // Must be called unconditionally, before any early return.
-  const { orders: chatOrders, forLine, isOrdered, orderFor, failed } = useCartOrderState();
+  const { orders: chatOrders, forLine, isPaid, isInProgress, isOrdered, orderFor, failed } =
+    useCartOrderState();
 
   useEffect(() => {
     if (!user) {
@@ -82,11 +83,12 @@ export function CartView() {
   // Cart items store USD prices; everything shown is converted to the visitor's currency.
   const currency = localCurrency;
 
-  // Lines already in an order are EXCLUDED from the money: they were paid (or are
-  // being paid) in the chat, so counting them again would double-charge.
+  // Only PAID (confirmed) lines leave the money total — they are already paid
+  // for in the chat. Lines still in progress (sent / awaiting payment) are
+  // counted here, since the customer still owes them.
   const lineKeyOf = (item: CartItem) => cartLineKey(item.productId, item.options);
-  const payable = items.filter((item) => !isOrdered(lineKeyOf(item)));
-  const orderedItems = items.filter((item) => isOrdered(lineKeyOf(item)));
+  const payable = items.filter((item) => !isPaid(lineKeyOf(item)));
+  const paidItems = items.filter((item) => isPaid(lineKeyOf(item)));
 
   const listTotal = payable.reduce(
     (sum, item) => sum + storeListPrice(item.price, currency) * item.quantity,
@@ -111,7 +113,7 @@ export function CartView() {
           <p className="text-sm text-ink-soft">
             {items.length} {items.length === 1 ? "item" : "items"}
             {unlocked.length > 0 ? ` · ${unlocked.length} unlocked free` : ""}
-            {orderedItems.length > 0 ? ` · ${orderedItems.length} already ordered` : ""}
+            {paidItems.length > 0 ? ` · ${paidItems.length} already paid` : ""}
           </p>
         </div>
         <HomeLink />
@@ -233,11 +235,12 @@ export function CartView() {
 
                   <div className="flex shrink-0 flex-col items-end justify-between gap-2">
                     {(() => {
-                      // An ordered line is LOCKED — quantity and remove are gone.
-                      // The customer gets a link to the order instead, so the
-                      // status and details live in one clear place.
+                      // Every ordered line is LOCKED — quantity and remove are gone.
+                      // "View order" appears ONLY for a paid (confirmed) product;
+                      // while an order is in progress there is nothing to view yet.
                       const lineKey = cartLineKey(item.productId, item.options);
                       const locked = isOrdered(lineKey);
+                      const paid = isPaid(lineKey);
                       const order = orderFor(lineKey);
 
                       if (locked) {
@@ -247,7 +250,7 @@ export function CartView() {
                               <LockKeyhole className="size-3" />
                               Qty {item.quantity}
                             </span>
-                            {order ? (
+                            {paid && order ? (
                               <Link
                                 href={`/orders/${encodeURIComponent(order.reference)}`}
                                 className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-white px-2 py-1 text-[10px] font-bold text-brand transition hover:bg-brand-tint"
@@ -255,7 +258,9 @@ export function CartView() {
                                 View order
                                 <ArrowRight className="size-3" />
                               </Link>
-                            ) : null}
+                            ) : (
+                              <span className="text-[10px] text-ink-soft">In progress in chat</span>
+                            )}
                           </div>
                         );
                       }

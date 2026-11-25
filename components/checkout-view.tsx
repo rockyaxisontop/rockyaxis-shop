@@ -51,12 +51,12 @@ export function CheckoutView() {
   }, [user]);
 
   // One total, in the visitor's currency — cart prices are USD internally.
-  const { orders: chatOrders, forLine, isOrdered, orderFor } = useCartOrderState();
+  // Only PAID (confirmed) products leave the money total. Rows whose order is
+  // accepted / awaiting payment are still owed, so they stay in the total.
+  const { orders: chatOrders, forLine, isPaid, isOrdered, orderFor } = useCartOrderState();
 
-  // Products already in an order are excluded from the money: they are paid (or
-  // being paid) in the chat and must never be charged twice here.
   const payable = items.filter(
-    (item) => !isOrdered(cartLineKey(item.productId, item.options)),
+    (item) => !isPaid(cartLineKey(item.productId, item.options)),
   );
 
   const totals = useMemo(
@@ -71,7 +71,7 @@ export function CheckoutView() {
       ),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, currency, isOrdered],
+    [items, currency, isPaid],
   );
 
   if (loading || (user && !ready)) {
@@ -216,17 +216,20 @@ export function CheckoutView() {
                   </div>
 
                   {/* The action reflects this row's order state:
-                      - any live order → locked, with "View order details"
+                      - any live order → locked; "View order details" only once
+                        the order is CONFIRMED (order success)
                       - cancelled      → can be ordered again
                       - no order       → "Buy this item" */}
                   {(() => {
                     const lineKey = cartLineKey(item.productId, item.options);
+                    const paid = isPaid(lineKey);
                     const ordered = isOrdered(lineKey);
                     const order = orderFor(lineKey);
 
                     // Ordered (sent, awaiting payment OR confirmed) is LOCKED:
                     // quantity and purchase are both disabled, and the customer is
                     // sent to the order page instead of being able to buy twice.
+                    // The "View order details" link only appears for confirmed orders.
                     if (ordered) {
                       return (
                         <div className="flex w-full shrink-0 flex-col gap-1.5 sm:w-auto">
@@ -246,11 +249,18 @@ export function CheckoutView() {
                             ) : (
                               <>
                                 <Clock3 className="size-3.5" />
-                                Order sent
+                                {order?.status === "awaiting_payment"
+                                  ? "Payment requested"
+                                  : "Order sent"}
                               </>
                             )}
                           </span>
-                          {order ? (
+                          {!paid && order ? (
+                            <span className="inline-flex items-center justify-center rounded-lg bg-surface-2 px-3 py-1 text-[11px] font-semibold text-ink-soft">
+                              Locked in order
+                            </span>
+                          ) : null}
+                          {paid && order ? (
                             <Link
                               href={`/orders/${encodeURIComponent(order.reference)}`}
                               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-brand bg-white px-4 text-sm font-bold text-brand transition hover:bg-brand-tint"
