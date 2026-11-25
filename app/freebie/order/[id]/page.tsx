@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AdCluster, AdSlot } from "@/components/ad-slot";
 import { FreebieOrderConfirmation } from "@/components/freebie-order-confirmation";
 import { ProductSuggestions } from "@/components/product-suggestions";
 
@@ -10,7 +11,9 @@ export default async function FreebieOrderPage({ params }: { params: Promise<{ i
   return (
     <div className="flex flex-col gap-8">
       <FreebieOrderConfirmation orderId={id} />
+      <AdSlot variant="banner" label="Sponsored" />
       <ProductSuggestions />
+      <AdCluster />
     </div>
   );
 }

@@ -1,6 +1,8 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Headphones, ShieldCheck, Truck } from "lucide-react";
 
+import { AdCluster, AdSlot } from "@/components/ad-slot";
 import { CategoryTiles } from "@/components/category-tiles";
 import { PromoBanners } from "@/components/promo-banners";
 import { ProductGrid } from "@/components/product-grid";
@@ -67,6 +69,9 @@ export default async function HomePage() {
         <span className="pointer-events-none absolute -right-4 -bottom-24 size-48 rounded-full bg-[#2da9d6]/30 sm:size-72" />
       </section>
 
+      {/* One slim unit right under the hero — visible without pushing content. */}
+      <AdSlot variant="strip" label="Sponsored" />
+
       <CategoryTiles />
 
       <PromoBanners />
@@ -102,16 +107,23 @@ export default async function HomePage() {
         ))}
       </section>
 
-      {/* Remaining product rows */}
-      {rest.map((group: SuggestedGroup) => (
-        <section key={group.key} className="flex flex-col gap-4">
-          <SectionHeading
-            title={group.title}
-            href={`/search?q=${encodeURIComponent(group.title)}`}
-          />
-          <ProductGrid products={group.products} />
-        </section>
+      {/* Remaining product rows — every other row is followed by one ad unit so
+          the page never becomes an ad wall. */}
+      {rest.map((group: SuggestedGroup, index) => (
+        <Fragment key={group.key}>
+          <section className="flex flex-col gap-4">
+            <SectionHeading
+              title={group.title}
+              href={`/search?q=${encodeURIComponent(group.query)}`}
+            />
+            <ProductGrid products={group.products} />
+          </section>
+          {index === 0 ? <AdSlot variant="native" label="You might also like" /> : null}
+        </Fragment>
       ))}
+
+      {/* Closing block, above the footer rather than at the very bottom. */}
+      <AdCluster />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2, Clock3, Loader2, PackageCheck, ShoppingBag, XC
 
 import { useCurrency } from "@/components/currency-provider";
 import { auth } from "@/lib/firebase/client";
-import { convertFromUsd, formatLocal } from "@/lib/currency";
+import { formatLocal } from "@/lib/currency";
 import { storeLineTotal, storeListPrice, storePrice } from "@/lib/discount";
 import type { ChatOrderStatus } from "@/lib/messaging/types";
 import { cn } from "@/lib/utils";

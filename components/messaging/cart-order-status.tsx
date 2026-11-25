@@ -56,7 +56,7 @@ export function useCartOrderState() {
   const forLine = (lineKey: string): ChatOrder | undefined =>
     orders
       .filter((order) => order.status !== "cancelled" && order.lineIds.includes(lineKey))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+      .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))[0];
 
   /** Statuses that mean the row has been bought and the money is settled. */
   const PAID: ChatOrderStatus[] = ["confirmed"];

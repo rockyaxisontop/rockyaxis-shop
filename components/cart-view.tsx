@@ -34,7 +34,7 @@ export function CartView() {
   const [ready, setReady] = useState(false);
   const { campaigns } = useFreebieCampaigns(Boolean(user));
   // Must be called unconditionally, before any early return.
-  const { orders: chatOrders, forLine, isPaid, isInProgress, isOrdered, orderFor, failed } =
+  const { orders: chatOrders, forLine, isPaid, isOrdered, orderFor, failed } =
     useCartOrderState();
 
   useEffect(() => {
