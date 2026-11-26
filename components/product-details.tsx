@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { OptionValue, PriceHistoryResponse, Product, ProductOffer } from "@channel3/sdk/resources";
+import type { OptionValue, PriceHistoryResponse, Product, ProductOffer } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";

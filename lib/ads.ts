@@ -60,3 +60,29 @@ export function loadNativeBanner() {
   script.src = NATIVE_SRC;
   document.body.appendChild(script);
 }
+
+const SOCIAL_BAR_SRC =
+  "https://www.highperformanceformat.com/e76ad1e8a3f3403f8acb8df4a2bb8da0/invoke.js";
+const POPUNDER_SRC = "https://araplhn.org/4f9973857107b0c4be7d4b0b9deed4dd/invoke.js";
+
+const loadedScripts = new Set<string>();
+
+/**
+ * Injects a network script at most once per browser session.
+ *
+ * `ChromeVisibility` re-runs on every navigation; without this guard the social
+ * bar would stack a copy of itself on each route change.
+ */
+export function loadOnce(src: string): void {
+  if (typeof window === "undefined" || loadedScripts.has(src)) return;
+  loadedScripts.add(src);
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.dataset.cfasync = "false";
+  script.src = src;
+  document.body.appendChild(script);
+}
+
+export const AD_SOCIAL_BAR_SCRIPT = SOCIAL_BAR_SRC;
+export const AD_POPUNDER_SCRIPT = POPUNDER_SRC;

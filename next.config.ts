@@ -33,7 +33,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    // Channel3 product images are served from many retailer/CDN hosts.
+    // Product images are served from many retailer/CDN hosts.
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   poweredByHeader: false,

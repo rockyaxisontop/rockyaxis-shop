@@ -1,15 +1,15 @@
 "use client";
 
-import type { Product } from "@channel3/sdk/resources";
+import type { Product } from "@/lib/products/types";
 
 import { ProductDetails } from "@/components/product-details";
 import { ProductRecommendations } from "@/components/product-recommendations";
 import { useVariantSelection } from "@/hooks/use-variant-selection";
-import { fetchSimilarProducts, resolveVariant } from "@/lib/channel3/client-products";
+import { fetchSimilarProducts, resolveVariant } from "@/lib/products/client-products";
 
 /**
- * Official Channel3 `product-details` block with live variant resolution.
- * All fetches go through /api/channel3/* so the API key stays server-side.
+ * Official `product-details` block with variant resolution.
+ * All fetches go through /api/catalog/*, backed by the configured provider.
  */
 export function ProductView({ product, currency }: { product: Product; currency?: string }) {
   const { product: activeProduct, selection, isResolving, select } = useVariantSelection({

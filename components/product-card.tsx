@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImageOff } from "lucide-react";
-import type { OptionValue, Product } from "@channel3/sdk/resources";
+import type { OptionValue, Product } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/currency-provider";

@@ -16,7 +16,7 @@ type AuthState = {
   loading: boolean;
 };
 
-/** Shared cache for the Channel3 UI hooks (search, variants, recommendations). */
+/** Shared cache for the product UI hooks (search, variants, recommendations). */
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {

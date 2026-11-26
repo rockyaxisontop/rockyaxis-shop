@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ImageOff } from "lucide-react";
-import type { ProductImage } from "@channel3/sdk/resources";
+import type { ProductImage } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
 import {

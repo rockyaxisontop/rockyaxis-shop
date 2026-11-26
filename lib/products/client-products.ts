@@ -1,25 +1,22 @@
 "use client";
 
-import type { OptionValue, Product } from "@channel3/sdk/resources";
-import type { VariantResolveInput } from "@/hooks/use-variant-selection";
 import type { SimilarFetchInput } from "@/hooks/use-product-recommendations";
+import type { VariantResolveInput } from "@/hooks/use-variant-selection";
+import type { OptionValue, Product } from "@/lib/products/types";
 
-/** VariantResolver for `useVariantSelection` – key stays on the server. */
+/** VariantResolver for `useVariantSelection`. */
 export async function resolveVariant({
   product,
   value,
   selection,
 }: VariantResolveInput): Promise<Product> {
-  // A swatch may point to its own canonical product id; otherwise re-resolve
-  // the current product with the chosen options.
+  // eBay listings have no variant-matrix endpoint: a swatch may point at another
+  // stored listing, otherwise the current product is already the answer.
   const productId = value.product_id ?? product.id;
-  const selected_options = value.product_id ? undefined : selection;
+  if (productId === product.id) return product;
 
-  const response = await fetch(`/api/channel3/products/${encodeURIComponent(productId)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ selected_options }),
-  });
+  void selection;
+  const response = await fetch(`/api/catalog/products/${encodeURIComponent(productId)}`);
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -32,7 +29,7 @@ export async function resolveVariant({
 /** SimilarFetcher for `ProductDetails`' recommendations carousel. */
 export async function fetchSimilarProducts({ productId, limit }: SimilarFetchInput): Promise<Product[]> {
   const response = await fetch(
-    `/api/channel3/products/${encodeURIComponent(productId)}/similar?limit=${limit}`,
+    `/api/catalog/products/${encodeURIComponent(productId)}/similar?limit=${limit}`,
   );
 
   if (!response.ok) return [];

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import type { Product, SearchFilters } from "@channel3/sdk/resources";
+import type { Product, SearchFilters } from "@/lib/products/types";
 
 import {
   EMPTY_FILTERS,
@@ -113,7 +113,7 @@ export function useProductSearch({
 
   const infinite = useInfiniteQuery({
     queryKey: [
-      "channel3-product-search",
+      "onefindme-product-search",
       active?.query ?? "",
       active ? toSearchFilters(active.filters) : {},
       active?.image?.imageUrl ?? null,

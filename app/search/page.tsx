@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { SearchExperience } from "@/components/search-experience";
 import { SuggestedProducts } from "@/components/suggested-products";
-import { getSuggestedProducts } from "@/lib/channel3/products";
+import { getSuggestedProducts } from "@/lib/products/service";
 
 type SearchPageProps = { searchParams: Promise<{ q?: string | string[] }> };
 

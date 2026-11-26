@@ -4,35 +4,48 @@ Shopping app built with:
 
 - **Next.js (App Router) + TypeScript + React 19**
 - **Tailwind CSS v4** + shadcn/ui primitives
-- **Channel3 API** for product search/details + the **official Channel3 React components**
+- **OneFindMe search API** (eBay listings only) for product data
+- **Firestore** as the product store — every unique eBay listing is saved once
 - **Firebase directly from the browser** (Auth + Firestore, no backend)
 
 ## Stack boundaries
 
 | Layer | Where | Rule |
 | --- | --- | --- |
-| Channel3 | `lib/channel3/server.ts`, `lib/channel3/products.ts` | `CHANNEL3_API_KEY` is a **server secret**. Never import these into a client component. |
-| Channel3 UI | `components/product-*.tsx`, `components/search-bar.tsx` (installed via shadcn) | Presentational only – they receive data as props and call fetchers you pass in. |
-| Fetch adapters | `lib/channel3/client-search.ts`, `lib/channel3/client-products.ts` | Turn the blocks' camelCase fetchers into calls to the `/api/channel3/*` proxies. |
+| Provider | `lib/products/onefindme.ts` | **The only file that knows OneFindMe exists.** Public API, no key. Reads `ebay_results` only; AliExpress (`results`) is ignored. |
+| Provider registry | `lib/products/provider.ts` | Declares the `ProductProvider` interface and selects one via `PRODUCT_PROVIDER`. Add a file + a registry entry to swap providers. |
+| Product format | `lib/products/types.ts` | The single `Product` shape every provider must map into; the frontend imports types from here. |
+| Product store | `lib/products/store.ts` | Firestore persistence: doc id = eBay item id (or URL hash), transaction-safe dedupe, category/search-term associations, query index. |
+| Catalogue service | `lib/products/service.ts` | Homepage categories, customer search + Load More, details, recommendations. |
+| Fetch adapters | `lib/products/client-search.ts`, `lib/products/client-products.ts` | Browser-side wrappers for `/api/catalog/*`. |
 | Firebase | `lib/firebase/*` | Runs only in the browser (`"use client"`). Access is enforced by `firestore.rules`. |
 
 ## Setup
 
 ```powershell
 npm install
-node scripts/setup-channel3.mjs <your_channel3_api_key>   # writes .env.local
+node scripts/setup-onefindme.mjs US   # writes ONEFINDME_COUNTRY to .env.local (no key needed)
 npm run dev
 ```
 
-### The official Channel3 components (already installed)
+### Product source: OneFindMe → Firestore
 
-The full kit was installed with:
+Verified against the live API ([`openapi.json`](https://onefindme.com/openapi.json)):
+`GET https://onefindme.com/api/search?query=…&country=…&max_results=…` returns AliExpress
+listings in `results` and eBay listings in `ebay_results`. We collect **only eBay**, priced in
+`ONEFINDME_COUNTRY`'s currency.
 
-```powershell
-npx shadcn@latest add https://ui.trychannel3.com/r/all.json
-```
+**Pagination limitation.** The API ignores `page`/`offset`/`cursor`/`skip` and caps
+`max_results` at 20, so there is no real pagination. Load More therefore walks *query
+variants* (`gaming laptop` → `gaming laptop rtx` → `gaming laptop ssd` → …), which each
+surface a partly different set of eBay listings; overlaps are removed in Firestore by
+item id. Each page saves newly discovered products and returns only the new ones.
 
-That generated flattened source (the CLI rewrites registry paths), so:
+**Dedupe.** The Firestore document id is the permanent eBay item id parsed from the
+listing URL (or a stable hash of the canonical URL when absent), and writes go through a
+transaction, so the same listing found via two categories or two searches is one document.
+
+### The product UI components (presentational, keeps the original design)
 
 - `components/product-search.tsx` → `ProductSearch` (used on `/search`)
 - `components/product-details.tsx` → `ProductDetails` (used on `/products/[id]`)
@@ -55,6 +68,9 @@ Vendored component files are excluded from strict lint rules in `eslint.config.m
 users/{uid}                        profile (displayName, email, createdAt)
 carts/{uid}/items/{itemId}         live cart items (productId, options, qty, price…)
 orders/{uid}/history/{orderId}     past orders (immutable)
+products/{productId}               unique eBay listings (id = eBay item id) + searchTerms/categoryKeys
+productQueries/{queryHash}         ordered product ids seen per search (diagnostics)
+productCategories/{categoryKey}    ordered product ids per homepage category
 ```
 
 ## Routes
@@ -62,13 +78,13 @@ orders/{uid}/history/{orderId}     past orders (immutable)
 | Route | Description |
 | --- | --- |
 | `/` | Landing page |
-| `/search` | Channel3 product search: filters, image search, infinite scroll |
+| `/search` | Product search: filters, infinite scroll (Load More) |
 | `/products/[id]` | Server-fetched PDP + live variant resolution + recommendations + add to cart |
 | `/login` | Google / email sign-in & sign-up |
 | `/cart` | Live Firestore cart |
-| `POST /api/channel3/search` | Key-hiding proxy for searches (text, image, pagination) |
-| `POST /api/channel3/products/[id]` | Product fetch + variant re-resolution (`selected_options`) |
-| `GET /api/channel3/products/[id]/similar` | Similar products for the recommendations carousel |
+| `POST /api/catalog/search` | Search proxy: discovers eBay listings, stores new ones, returns unique products (Load More via `page_token`) |
+| `POST /api/catalog/products/[id]` | Stored product fetch / variant re-resolution (`selected_options`) |
+| `GET /api/catalog/products/[id]/similar` | Similar products for the recommendations carousel |
 
 ## Verify
 

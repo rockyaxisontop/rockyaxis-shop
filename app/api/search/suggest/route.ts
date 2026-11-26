@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { searchProducts } from "@/lib/channel3/products";
+import { suggestProducts } from "@/lib/products/service";
 import { storePrice } from "@/lib/discount";
 import { cached, clientKey, rateLimit, tooManyRequests } from "@/lib/server/guard";
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const query = (new URL(request.url).searchParams.get("q") ?? "").trim();
   if (query.length < 2) return NextResponse.json({ suggestions: [] });
 
-  // Typeahead is the easiest way to burn Channel3 credits: cap it per IP.
+  // Typeahead is the easiest way to burn upstream requests: cap it per IP.
   const limit = rateLimit(`suggest:${clientKey(request)}`, 40, 60_000);
   if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
@@ -36,8 +36,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { products } = await cached(`suggest:${key}`, TTL_MS, () =>
-      searchProducts({ query, limit: 6 }),
+    // Typeahead previews straight from the provider and saves nothing — a
+    // Firestore write per keystroke would be wasteful and rate-limit prone.
+    const products = await cached(`suggest:${key}`, TTL_MS, () =>
+      suggestProducts(query, 6),
     );
     const suggestions = products.slice(0, 6).map((product) => {
       const offer =

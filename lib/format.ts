@@ -3,7 +3,7 @@ import type {
   Price,
   ProductImage,
   ProductOffer,
-} from "@channel3/sdk/resources";
+} from "@/lib/products/types";
 
 import { formatLocal } from "./currency";
 import { STORE_DISCOUNT_PERCENT, storeListPrice, storePrice } from "./discount";

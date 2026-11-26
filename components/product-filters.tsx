@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { Brand, Category, CategoryAttribute, CategorySummary, Website } from "@channel3/sdk/resources";
+import type { Brand, Category, CategoryAttribute, CategorySummary, Website } from "@/lib/products/types";
 import { Check, ChevronDown, Pipette, Plus, X } from "lucide-react";
 import { HexColorPicker } from "react-colorful";
 

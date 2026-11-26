@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { getProduct } from "@/lib/channel3/products";
+import { getProduct } from "@/lib/products/service";
 import { STORE_DISCOUNT_PERCENT, storeListPrice, storePrice } from "@/lib/discount";
 import { ApiError, getAdminDb, type AuthUser } from "@/lib/firebase/admin";
 import {

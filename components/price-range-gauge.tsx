@@ -1,4 +1,4 @@
-import type { PriceStatistics } from "@channel3/sdk/resources";
+import type { PriceStatistics } from "@/lib/products/types";
 import type * as React from "react";
 
 import { cn } from "@/lib/utils";

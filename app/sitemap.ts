@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { getSuggestedProducts } from "@/lib/channel3/products";
+import { getSuggestedProducts } from "@/lib/products/service";
 import { SITE_URL } from "@/lib/site";
 
 /**

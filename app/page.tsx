@@ -7,7 +7,7 @@ import { CategoryTiles } from "@/components/category-tiles";
 import { PromoBanners } from "@/components/promo-banners";
 import { ProductGrid } from "@/components/product-grid";
 import { SectionHeading } from "@/components/section-heading";
-import { getSuggestedProducts, type SuggestedGroup } from "@/lib/channel3/products";
+import { getSuggestedProducts, type SuggestedGroup } from "@/lib/products/service";
 
 // Product rows are refreshed at most every 30 minutes.
 export const revalidate = 1800;

@@ -1,5 +1,5 @@
 import { SuggestedProducts } from "@/components/suggested-products";
-import { getSuggestedProducts } from "@/lib/channel3/products";
+import { getSuggestedProducts } from "@/lib/products/service";
 
 /** Compact store discovery feed for pages beyond the homepage. */
 export async function ProductSuggestions() {

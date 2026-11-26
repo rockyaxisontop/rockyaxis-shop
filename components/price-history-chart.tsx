@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import type { PriceHistoryPoint } from "@channel3/sdk/resources";
+import type { PriceHistoryPoint } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
 import {

@@ -5,15 +5,15 @@ import type {
   OfferAvailabilityStatus,
   SearchFilters,
   Website,
-} from "@channel3/sdk/resources";
+} from "@/lib/products/types";
 
 /** Gender values accepted by the search filter (`unisex` products are matched implicitly). */
 export type GenderFilter = NonNullable<SearchFilters["gender"]>;
 export type AgeFilter = NonNullable<SearchFilters["age"]>[number];
 export type ConditionFilter = NonNullable<SearchFilters["conditions"]>[number];
 export type AvailabilityFilterValue = OfferAvailabilityStatus;
-export type LengthUnit = NonNullable<NonNullable<SearchFilters["dimensions"]>["length"]>["unit"];
-export type WeightUnit = NonNullable<NonNullable<SearchFilters["dimensions"]>["weight"]>["unit"];
+export type LengthUnit = "mm" | "cm" | "m" | "in" | "ft";
+export type WeightUnit = "mg" | "g" | "kg" | "oz" | "lb";
 
 export interface ColorFilter {
   hex: string;

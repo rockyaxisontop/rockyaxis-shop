@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ExternalLink } from "lucide-react";
-import type { ProductOffer } from "@channel3/sdk/resources";
+import type { ProductOffer } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";

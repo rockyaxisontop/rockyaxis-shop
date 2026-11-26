@@ -1,4 +1,4 @@
-import type { OptionValue, VariantOption, Variants } from "@channel3/sdk/resources";
+import type { OptionValue, VariantOption, Variants } from "@/lib/products/types";
 import { isInStock } from "@/lib/format";
 
 /**

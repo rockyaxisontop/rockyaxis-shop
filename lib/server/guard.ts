@@ -6,7 +6,7 @@ import "server-only";
  * Deliberately dependency-free: this runs on a single serverless instance, which
  * is exactly right for a low-budget deployment. It costs nothing, needs no Redis,
  * and absorbs the abuse that actually matters here — someone hammering a search
- * or message endpoint and burning Firestore reads / Channel3 credits.
+ * or message endpoint and burning Firestore reads / upstream API calls.
  *
  * Limitation (stated honestly): each serverless instance has its own memory, so
  * the effective limit is `limit × instances`. That is fine for stopping runaway

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation } from "@tanstack/react-query";
-import type { OptionValue, Product } from "@channel3/sdk/resources";
+import type { OptionValue, Product } from "@/lib/products/types";
 
 import { mergeSelection, selectionFromVariants } from "@/lib/variants";
 

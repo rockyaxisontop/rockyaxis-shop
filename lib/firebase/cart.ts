@@ -3,7 +3,7 @@
 import { auth } from "@/lib/firebase/client";
 
 export type CartItem = {
-  /** Channel3 canonical product id. */
+  /** Catalogue product id (eBay item id). */
   productId: string;
   title: string;
   image?: string;

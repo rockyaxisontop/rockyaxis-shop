@@ -37,7 +37,7 @@ export function useAsyncOptions<T>({
   const enabled = debounced.length >= minLength;
 
   const result = useQuery({
-    queryKey: ["channel3-async-options", scope, debounced],
+    queryKey: ["onefindme-async-options", scope, debounced],
     queryFn: () => fetch(debounced),
     enabled,
   });

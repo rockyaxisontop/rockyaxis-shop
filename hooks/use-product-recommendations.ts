@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Product, SearchFilters } from "@channel3/sdk/resources";
+import type { Product, SearchFilters } from "@/lib/products/types";
 
 import { useInViewport } from "@/hooks/use-in-viewport";
 
@@ -56,7 +56,7 @@ export function useProductRecommendations({
   useInViewport(node, () => setInView(true), { enabled: !eager && !inView, once: true });
 
   const query = useQuery({
-    queryKey: ["channel3-similar", productId, limit, filters],
+    queryKey: ["onefindme-similar", productId, limit, filters],
     queryFn: () => fetchSimilar({ productId: productId!, limit, filters }),
     enabled: Boolean(enabled && inView && productId),
   });

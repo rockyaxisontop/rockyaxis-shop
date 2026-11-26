@@ -2,19 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { Product } from "@channel3/sdk/resources";
+import type { Product } from "@/lib/products/types";
 
 import { ProductSearch } from "@/components/product-search";
 import { Button } from "@/components/ui/button";
-import { fetchProductSearch, productSearchFetcher } from "@/lib/channel3/client-search";
+import { fetchProductSearch, productSearchFetcher } from "@/lib/products/client-search";
 import { useCurrency } from "@/components/currency-provider";
 import { storeListPrice, storePrice } from "@/lib/discount";
 
 /**
- * Official Channel3 `product-search` block – filters, image search and
- * infinite scroll included. It's presentational: all data goes through
- * `productSearchFetcher`, which calls our /api/channel3 proxy so the API key
- * never reaches the browser.
+ * Official `product-search` block – filters and infinite scroll included. It's
+ * presentational: all data goes through `productSearchFetcher`, which calls our
+ * /api/catalog proxy (OneFindMe + Firestore) so no provider key reaches the browser.
  */
 export function SearchExperience({ initialQuery = "" }: { initialQuery?: string }) {
   const router = useRouter();
@@ -32,7 +31,7 @@ export function SearchExperience({ initialQuery = "" }: { initialQuery?: string 
   );
 }
 
-/** Kept as a plain search box if you ever want to remove the Channel3 block. */
+/** Kept as a plain search box if you ever want to remove the search block. */
 export function FallbackSearch({ onSelect }: { onSelect: (product: Product) => void }) {
   const { currency } = useCurrency();
   const [query, setQuery] = useState("");

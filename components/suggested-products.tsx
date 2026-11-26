@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { Product } from "@channel3/sdk/resources";
+import type { Product } from "@/lib/products/types";
 
-import type { SuggestedGroup } from "@/lib/channel3/products";
+import type { SuggestedGroup } from "@/lib/products/service";
 import { useCurrency } from "@/components/currency-provider";
 import { STORE_DISCOUNT_PERCENT, storeListPrice, storePrice } from "@/lib/discount";
 import { formatMoney } from "@/lib/format";

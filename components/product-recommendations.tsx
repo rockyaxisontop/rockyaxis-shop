@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { OptionValue, Product, SearchFilters } from "@channel3/sdk/resources";
+import type { OptionValue, Product, SearchFilters } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
 import { ProductCarousel } from "@/components/product-carousel";

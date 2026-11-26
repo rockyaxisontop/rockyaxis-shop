@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { Product } from "@channel3/sdk/resources";
+import type { Product } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
 

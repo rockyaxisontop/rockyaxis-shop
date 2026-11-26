@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { OptionValue, Product } from "@channel3/sdk/resources";
+import type { OptionValue, Product } from "@/lib/products/types";
 import { SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";

@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { OptionValue, Product } from "@channel3/sdk/resources";
+import type { OptionValue, Product } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";

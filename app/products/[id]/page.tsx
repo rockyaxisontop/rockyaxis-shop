@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { AddToCart } from "@/components/add-to-cart";
 import { ProductRecommendationsView, ProductView } from "@/components/product-view";
-import { getProduct } from "@/lib/channel3/products";
+import { getProduct } from "@/lib/products/service";
 import { getCurrencyContext } from "@/lib/currency/server";
 import { storeListPrice, storePrice } from "@/lib/discount";
 import { discountPercent, formatMoney } from "@/lib/format";
@@ -47,21 +47,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function ProductPage({ params, searchParams }: PageProps) {
+export default async function ProductPage({ params }: PageProps) {
   const { id } = await params;
-  const resolvedSearchParams = await searchParams;
 
   let product;
   try {
-    // Variant links carry the selected options in the query string so the
-    // server resolves the exact purchasable product.
-    const selected_options = Object.fromEntries(
-      Object.entries(resolvedSearchParams).filter(
-        (entry): entry is [string, string] => typeof entry[1] === "string",
-      ),
-    );
-
-    product = await getProduct(id, { selected_options });
+    // eBay listings are stored under the id in the URL; nothing to resolve from
+    // the query string beyond that.
+    product = await getProduct(id);
   } catch {
     notFound();
   }
