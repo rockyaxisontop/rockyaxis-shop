@@ -21,6 +21,10 @@ export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
 
   return (
     <section className="flex flex-col gap-8 pt-2 sm:gap-10 sm:pt-4">
+      {/* A wide banner-type unit above the feed, so the shopper sees the offers
+          card before the rows start. */}
+      <AdSlot variant="banner" label="Sponsored" />
+
       {groups.map((group, index) => (
         <div key={group.key} className="flex flex-col gap-3 sm:gap-4">
           <h2 className="text-base font-semibold tracking-tight sm:text-lg">{group.title}</h2>
@@ -31,10 +35,14 @@ export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
             ))}
           </div>
 
-          {/* One slim sponsored break between suggestion rows — after the first
-              row only, so the cart/checkout flow never feels interrupted. */}
+          {/* Banner-type units BETWEEN suggestion rows: a slim strip after the
+              first row, a wide feature card after the second. Alternating keeps
+              the feed readable instead of turning it into an ad wall. */}
           {index === 0 && groups.length > 1 ? (
             <AdSlot variant="strip" label="Sponsored" />
+          ) : null}
+          {index === 1 && groups.length > 2 ? (
+            <AdSlot variant="feature" label="Sponsored" creative={index} />
           ) : null}
         </div>
       ))}

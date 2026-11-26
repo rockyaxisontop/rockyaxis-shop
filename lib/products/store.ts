@@ -88,22 +88,71 @@ export function categoryKeyFor(categoryKey: string): string {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Availability gate                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * After Firestore answers RESOURCE_EXHAUSTED (the free tier's daily cap) or is
+ * unreachable, stop hammering it for a short while.
+ *
+ * Without this, every homepage request paid nine failing round-trips before the
+ * rows could fall back to the provider. The window is deliberately short so the
+ * catalogue starts persisting again on its own once the quota resets.
+ */
+const UNAVAILABLE_RETRY_MS = 5 * 60 * 1000;
+let unavailableUntil = 0;
+
+function isQuotaOrAvailabilityError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return (
+    code === 8 || // gRPC RESOURCE_EXHAUSTED
+    code === 14 || // UNAVAILABLE
+    /RESOURCE_EXHAUSTED|quota|unavailable|ECONNREFUSED/i.test(message)
+  );
+}
+
+/** Runs a Firestore operation; remembers quota/outage failures for a while. */
+async function guarded<T>(operation: () => Promise<T>): Promise<T> {
+  if (Date.now() < unavailableUntil) {
+    throw new Error("Firestore is temporarily unavailable; using the live provider.");
+  }
+  try {
+    return await operation();
+  } catch (error) {
+    if (isQuotaOrAvailabilityError(error)) {
+      unavailableUntil = Date.now() + UNAVAILABLE_RETRY_MS;
+    }
+    throw error;
+  }
+}
+
+/** True while Firestore is being skipped (used to keep the UI honest). */
+export function isStoreUnavailable(): boolean {
+  return Date.now() < unavailableUntil;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Reads                                                                      */
 /* -------------------------------------------------------------------------- */
 
 export async function getProductById(id: string): Promise<Product | null> {
-  const snapshot = await getAdminDb().collection(PRODUCTS).doc(id).get();
-  return snapshot.exists ? toProduct(snapshot.id, snapshot.data() ?? {}) : null;
+  return guarded(async () => {
+    const snapshot = await getAdminDb().collection(PRODUCTS).doc(id).get();
+    return snapshot.exists ? toProduct(snapshot.id, snapshot.data() ?? {}) : null;
+  });
 }
 
 export async function getProductsByIds(ids: string[]): Promise<Product[]> {
   const unique = [...new Set(ids.filter(Boolean))];
   if (unique.length === 0) return [];
-  const db = getAdminDb();
-  const snapshots = await Promise.all(unique.map((id) => db.collection(PRODUCTS).doc(id).get()));
-  return snapshots
-    .filter((snapshot) => snapshot.exists)
-    .map((snapshot) => toProduct(snapshot.id, snapshot.data() ?? {}));
+  return guarded(async () => {
+    const db = getAdminDb();
+    const snapshots = await Promise.all(unique.map((id) => db.collection(PRODUCTS).doc(id).get()));
+    return snapshots
+      .filter((snapshot) => snapshot.exists)
+      .map((snapshot) => toProduct(snapshot.id, snapshot.data() ?? {}));
+  });
 }
 
 export type ListedProducts = { ids: string[]; total: number };

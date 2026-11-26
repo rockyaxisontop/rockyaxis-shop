@@ -62,6 +62,9 @@ async function categoryFromStore(key: string, limit: number): Promise<Product[]>
  * `page` is 1-based: page 1 is the category's own query, later pages walk the
  * provider's refinement variants so a category keeps growing over time instead
  * of re-saving the same listings.
+ *
+ * Returning provider products must never depend on persistence: Firestore can
+ * be unavailable (quota, outage) and the homepage row still has to render.
  */
 export async function discoverCategoryProducts(
   key: string,
@@ -72,6 +75,7 @@ export async function discoverCategoryProducts(
   const provider = getProductProvider();
   const scope: TermScope = { kind: "category", value: key };
 
+  let found: Product[];
   try {
     const { products } = await provider.search({
       query,
@@ -79,15 +83,23 @@ export async function discoverCategoryProducts(
       limit,
       country: currencyCountry(),
     });
-
-    const saved = await persistProducts(dedupe(products), scope, {
-      indexScopes: [{ kind: "search", value: query }],
-    });
-    return saved;
+    found = dedupe(products);
   } catch (error) {
-    console.error(`OneFindMe category discovery failed for "${key}":`, error);
+    console.error(`Product discovery failed for "${key}":`, error);
     return [];
   }
+
+  // Best-effort persistence: saving enriches the catalogue over time, but a
+  // write failure must not hide the products we already have in hand.
+  try {
+    await persistProducts(found, scope, {
+      indexScopes: [{ kind: "search", value: query }],
+    });
+  } catch (error) {
+    console.error(`Could not store products for "${key}" (continuing):`, error);
+  }
+
+  return found;
 }
 
 /**
