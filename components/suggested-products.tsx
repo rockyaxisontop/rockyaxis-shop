@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { Product } from "@/lib/products/types";
 
 import type { SuggestedGroup } from "@/lib/products/service";
+import { AdSlot } from "@/components/ad-slot";
+import { PartnerDealButton } from "@/components/partner-deal";
 import { useCurrency } from "@/components/currency-provider";
 import { STORE_DISCOUNT_PERCENT, storeListPrice, storePrice } from "@/lib/discount";
 import { formatMoney } from "@/lib/format";
@@ -19,7 +21,7 @@ export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
 
   return (
     <section className="flex flex-col gap-8 pt-2 sm:gap-10 sm:pt-4">
-      {groups.map((group) => (
+      {groups.map((group, index) => (
         <div key={group.key} className="flex flex-col gap-3 sm:gap-4">
           <h2 className="text-base font-semibold tracking-tight sm:text-lg">{group.title}</h2>
 
@@ -28,8 +30,21 @@ export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
               <ProductTile key={product.id} product={product} />
             ))}
           </div>
+
+          {/* One slim sponsored break between suggestion rows — after the first
+              row only, so the cart/checkout flow never feels interrupted. */}
+          {index === 0 && groups.length > 1 ? (
+            <AdSlot variant="strip" label="Sponsored" />
+          ) : null}
         </div>
       ))}
+
+      {/* A single partner-offer button under the suggestions, clearly labelled. */}
+      {groups.length > 0 ? (
+        <div className="flex justify-center pt-1">
+          <PartnerDealButton placement="suggestions" index={1} />
+        </div>
+      ) : null}
     </section>
   );
 }

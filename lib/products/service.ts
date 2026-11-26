@@ -100,9 +100,18 @@ export async function getCategoryProducts(
   query: string,
   limit: number,
 ): Promise<Product[]> {
-  const before = await categoryFromStore(key, CATEGORY_TARGET);
-  const products = await getProductsByIds(before.map((product) => product.id));
-  const seen = new Set(products.map((product) => product.id));
+  // Reading stored products is best-effort: if Firestore is unavailable (quota,
+  // outage) the row is simply rebuilt from the provider below.
+  let products: Product[] = [];
+  let seen = new Set<string>();
+  try {
+    const before = await categoryFromStore(key, CATEGORY_TARGET);
+    products = await getProductsByIds(before.map((product) => product.id));
+    seen = new Set(products.map((product) => product.id));
+  } catch (error) {
+    console.error(`Could not read stored products for "${key}":`, error);
+  }
+
   const result = products.filter((product) => (product.offers?.length ?? 0) > 0);
 
   const missing = limit > 0 ? limit - result.length : 0;
@@ -207,7 +216,7 @@ export async function searchProducts({
   };
 
   let pageIndex = page;
-  let fresh: Product[] = [];
+  let pageProducts: Product[] = [];
   let hasMore = false;
 
   // Keep refining until this request can fill a page with listings nobody has
@@ -217,15 +226,24 @@ export async function searchProducts({
     try {
       const output = await fetchPage(pageIndex);
       hasMore = output.hasMore;
-      fresh = await persistProducts(dedupe(output.products), scope);
+      pageProducts = dedupe(output.products);
     } catch (error) {
       console.error(`OneFindMe search failed for "${text}":`, error);
-      fresh = [];
+      pageProducts = [];
     }
 
-    const usable = fresh.filter((product) => (product.offers?.length ?? 0) > 0);
-    if (usable.length > 0 || !hasMore) break;
+    if (pageProducts.length > 0 || !hasMore) break;
     pageIndex += 1;
+  }
+
+  // Persisting is best-effort: if Firestore is unavailable (quota, outage) the
+  // shopper still sees the results they asked for — saving can catch up on a
+  // later request.
+  let fresh: Product[] = [];
+  try {
+    fresh = await persistProducts(pageProducts, scope);
+  } catch (error) {
+    console.error(`Could not store search results for "${text}":`, error);
   }
 
   const usable = (product: Product) => (product.offers?.length ?? 0) > 0;
@@ -234,27 +252,41 @@ export async function searchProducts({
   // products. Already-stored ones fill the rest of the page.
   const combined: Product[] = [];
   const seen = new Set<string>();
+  // Upstream results first: when Firestore is unavailable these are the only
+  // products this request has.
   for (const product of fresh.filter(usable)) {
+    if (seen.has(product.id)) continue;
+    seen.add(product.id);
+    combined.push(product);
+  }
+  for (const product of pageProducts.filter(usable)) {
     if (seen.has(product.id)) continue;
     seen.add(product.id);
     combined.push(product);
   }
 
   if (combined.length < size) {
-    const stored = await findProductsByTerm(scope, size * 3);
-    for (const product of stored.filter(usable)) {
-      if (seen.has(product.id)) continue;
-      seen.add(product.id);
-      combined.push(product);
-      if (combined.length >= size) break;
+    try {
+      const stored = await findProductsByTerm(scope, size * 3);
+      for (const product of stored.filter(usable)) {
+        if (seen.has(product.id)) continue;
+        seen.add(product.id);
+        combined.push(product);
+        if (combined.length >= size) break;
+      }
+    } catch (error) {
+      console.error(`Could not read stored results for "${text}":`, error);
     }
   }
 
   return {
-    products: combined,
+    products: combined.slice(0, size),
     // Continue the walk from wherever this request stopped, so Load More keeps
     // discovering new refinements instead of re-walking the same ones.
-    nextPageToken: fresh.length > 0 || hasMore ? encodePageToken(pageIndex + 1) : undefined,
+    nextPageToken:
+      fresh.length > 0 || pageProducts.length > 0 || hasMore
+        ? encodePageToken(pageIndex + 1)
+        : undefined,
   };
 }
 

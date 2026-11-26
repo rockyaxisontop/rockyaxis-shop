@@ -3,6 +3,7 @@ import type { OptionValue, Product } from "@/lib/products/types";
 import { SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { AdSlot } from "@/components/ad-slot";
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/product-grid";
 import { SearchBar } from "@/components/search-bar";
@@ -61,6 +62,8 @@ export interface ProductSearchProps extends Omit<React.ComponentProps<"div">, "o
   onSelectVariant?: (product: Product, value: OptionValue) => void;
   showSwatches?: boolean;
   locale?: string;
+  /** Drops a sponsored card into the results grid every N products (0 = off). */
+  adsEvery?: number;
 }
 
 export function ProductSearch({
@@ -80,6 +83,7 @@ export function ProductSearch({
   onSelectVariant,
   showSwatches,
   locale,
+  adsEvery = 0,
   className,
   ...props
 }: ProductSearchProps) {
@@ -138,12 +142,18 @@ export function ProductSearch({
         onSelectVariant={onSelectVariant}
         showSwatches={showSwatches}
         locale={locale}
+        adsEvery={adsEvery}
       />
     );
 
   const resultsColumn = (
     <div className="flex flex-col gap-6">
       {resultsBody}
+      {/* Short result sets get one sponsored card AFTER the products, so the
+          ad exists without pushing results around. */}
+      {!isLoading && results.length > 0 && results.length <= adsEvery ? (
+        <AdSlot variant="feature" label="Sponsored" creative={1} />
+      ) : null}
       {isLoadingMore ? (
         <p className="text-center text-sm text-muted-foreground">Loading more…</p>
       ) : null}

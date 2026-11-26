@@ -86,3 +86,36 @@ export function loadOnce(src: string): void {
 
 export const AD_SOCIAL_BAR_SCRIPT = SOCIAL_BAR_SRC;
 export const AD_POPUNDER_SCRIPT = POPUNDER_SRC;
+
+/** Small, clearly-labelled partner offers used by the greedy button. */
+export const AD_DEAL_OFFERS = [
+  { label: "Today's deals", line: "Up to 70% off partner picks" },
+  { label: "More offers", line: "Fresh partner deals, updated daily" },
+  { label: "See deals", line: "Bargains from our partners" },
+] as const;
+
+/** The partner offers entry point for any given placement index. */
+export function dealOffer(index: number) {
+  return AD_DEAL_OFFERS[Math.abs(index) % AD_DEAL_OFFERS.length];
+}
+
+/**
+ * Remembers that the visitor pressed a partner-offer button, so the same
+ * placement stops nagging them for the rest of the session. Safe to call when
+ * storage is unavailable (private mode, blocked cookies).
+ */
+export function markDealOpened(key: string): void {
+  try {
+    sessionStorage.setItem(`mt-ad-deal:${key}`, "1");
+  } catch {
+    /* storage blocked — the button simply stays visible */
+  }
+}
+
+export function dealWasOpened(key: string): boolean {
+  try {
+    return sessionStorage.getItem(`mt-ad-deal:${key}`) === "1";
+  } catch {
+    return false;
+  }
+}

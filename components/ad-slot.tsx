@@ -293,27 +293,10 @@ function AdLabel({ label }: { label: string }) {
 }
 
 /**
- * Drops an in-feed ad card into a product grid after `every` items.
- *
- * The card stays inside the grid so the layout never jumps: it occupies the
- * exact cell a product would. Nothing is inserted after the last item.
+ * Grid placement helpers live in `lib/ad-cells.ts` (a non-client module, so the
+ * server-rendered ProductGrid can use them). Re-exported here for convenience.
  */
-export function withInFeedAds<T>(items: T[], every = 6, offset = 0): Array<T | { __ad: number }> {
-  if (every <= 0) return items;
-  const out: Array<T | { __ad: number }> = [];
-  items.forEach((item, index) => {
-    out.push(item);
-    const placed = index + 1 + offset;
-    if (placed % every === 0 && index < items.length - 1) {
-      out.push({ __ad: out.length });
-    }
-  });
-  return out;
-}
-
-export function isAdCell<T>(cell: T | { __ad: number }): cell is { __ad: number } {
-  return typeof cell === "object" && cell !== null && "__ad" in (cell as object);
-}
+export { isAdCell, withInFeedAds } from "@/lib/ad-cells";
 
 /** Dense block of network units — used after long lists and in landing pages. */
 export function AdCluster({ className = "", offset = 0 }: { className?: string; offset?: number }) {

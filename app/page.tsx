@@ -3,10 +3,12 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, Headphones, ShieldCheck, Truck } from "lucide-react";
 
 import { AdCluster, AdSlot } from "@/components/ad-slot";
+import { PartnerDealButton } from "@/components/partner-deal";
 import { CategoryTiles } from "@/components/category-tiles";
 import { PromoBanners } from "@/components/promo-banners";
 import { ProductGrid } from "@/components/product-grid";
 import { SectionHeading } from "@/components/section-heading";
+import { rowBreakAfter } from "@/lib/ad-placement";
 import { getSuggestedProducts, type SuggestedGroup } from "@/lib/products/service";
 
 // Product rows are refreshed at most every 30 minutes.
@@ -74,6 +76,13 @@ export default async function HomePage() {
 
       <CategoryTiles />
 
+      {/* A labelled partner-offer button, beside the category tiles: eye-catching
+          but clearly not store navigation. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-white px-3 py-2.5 sm:px-4">
+        <p className="text-xs text-ink-soft">Looking for a bargain first?</p>
+        <PartnerDealButton placement="home-tiles" />
+      </div>
+
       <PromoBanners />
 
       {groups.length === 0 ? (
@@ -107,20 +116,25 @@ export default async function HomePage() {
         ))}
       </section>
 
-      {/* Remaining product rows — every other row is followed by one ad unit so
-          the page never becomes an ad wall. */}
-      {rest.map((group: SuggestedGroup, index) => (
-        <Fragment key={group.key}>
-          <section className="flex flex-col gap-4">
-            <SectionHeading
-              title={group.title}
-              href={`/search?q=${encodeURIComponent(group.query)}`}
-            />
-            <ProductGrid products={group.products} />
-          </section>
-          {index === 0 ? <AdSlot variant="native" label="You might also like" /> : null}
-        </Fragment>
-      ))}
+      {/* Remaining product rows — a sponsored break sits BETWEEN rows (never
+          after the first), scheduled by lib/ad-placement so the page keeps a
+          readable rhythm instead of becoming an ad wall. */}
+      {rest.map((group: SuggestedGroup, index) => {
+        const rowNumber = index + 2; // the first row was rendered above
+        const ad = rowBreakAfter(rowNumber);
+        return (
+          <Fragment key={group.key}>
+            <section className="flex flex-col gap-4">
+              <SectionHeading
+                title={group.title}
+                href={`/search?q=${encodeURIComponent(group.query)}`}
+              />
+              <ProductGrid products={group.products} />
+            </section>
+            {ad ? <AdSlot variant={ad.variant} label={ad.label} creative={rowNumber} /> : null}
+          </Fragment>
+        );
+      })}
 
       {/* Closing block, above the footer rather than at the very bottom. */}
       <AdCluster />

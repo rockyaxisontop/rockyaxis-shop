@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Clock3, Search, TrendingUp } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
+import { PartnerDealButton } from "@/components/partner-deal";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -122,6 +123,10 @@ export function SearchSuggestions({ query, onNavigate }: { query: string; onNavi
             </li>
           ))}
         </ul>
+        {/* Partner offer at the foot of the dropdown, so the top stays search. */}
+        <div className="border-t border-border px-2 py-1.5">
+          <PartnerDealButton placement="header-popular" tone="block" index={2} />
+        </div>
       </div>
     );
   }
@@ -187,6 +192,11 @@ export function SearchSuggestions({ query, onNavigate }: { query: string; onNavi
           <ArrowRight className="size-3.5" />
         </button>
       ) : null}
+
+      {/* Partner offer as the last row of the dropdown: small and labelled. */}
+      <div className="border-t border-border px-2 py-1.5">
+        <PartnerDealButton placement="header-typeahead" tone="block" index={2} />
+      </div>
     </div>
   );
 }

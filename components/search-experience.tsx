@@ -6,6 +6,7 @@ import type { Product } from "@/lib/products/types";
 
 import { ProductSearch } from "@/components/product-search";
 import { Button } from "@/components/ui/button";
+import { IN_FEED_EVERY } from "@/lib/ad-placement";
 import { fetchProductSearch, productSearchFetcher } from "@/lib/products/client-search";
 import { useCurrency } from "@/components/currency-provider";
 import { storeListPrice, storePrice } from "@/lib/discount";
@@ -26,6 +27,8 @@ export function SearchExperience({ initialQuery = "" }: { initialQuery?: string 
       searchOnMount
       initialQuery={initialQuery}
       imageSearch
+      // Sponsored cards inside the results grid, after a few products.
+      adsEvery={IN_FEED_EVERY}
       onSelect={(product: Product) => router.push(`/products/${product.id}`)}
     />
   );
