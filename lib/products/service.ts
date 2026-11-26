@@ -140,7 +140,9 @@ export async function getCategoryProducts(
     }
   }
 
-  return result.slice(0, Math.max(limit, 0));
+  const row = result.slice(0, Math.max(limit, 0));
+  rememberProducts(row);
+  return row;
 }
 
 /**
@@ -291,8 +293,11 @@ export async function searchProducts({
     }
   }
 
+  const page_ = combined.slice(0, size);
+  rememberProducts(page_);
+
   return {
-    products: combined.slice(0, size),
+    products: page_,
     // Continue the walk from wherever this request stopped, so Load More keeps
     // discovering new refinements instead of re-walking the same ones.
     nextPageToken:
@@ -319,16 +324,54 @@ export async function suggestProducts(query: string, limit = 6): Promise<Product
 /* -------------------------------------------------------------------------- */
 
 /**
- * Product page data. Products are stored at discovery time, so this is a plain
- * Firestore read. eBay listings have no variant matrix, so there is nothing to
+ * Session cache of products the server has already rendered.
+ *
+ * The store is the durable home for products, but Firestore can be unavailable
+ * (quota, outage) and the product page must still open for a card the shopper
+ * just clicked. Every row and search already has the full product in memory when
+ * it renders, so it's kept here for the lifetime of the process and used as a
+ * last resort before giving up.
+ *
+ * Bounded and insertion-ordered (Map keeps insertion order): the oldest entry is
+ * evicted once the cap is reached, so this cannot grow without limit.
+ */
+const RENDERED_LIMIT = 2000;
+const renderedProducts = new Map<string, Product>();
+
+/** Remembers products that have just been sent to the browser. */
+export function rememberProducts(products: ReadonlyArray<Product>): void {
+  for (const product of products) {
+    if (!product?.id) continue;
+    // Re-insert so a product that stays popular is evicted last.
+    renderedProducts.delete(product.id);
+    renderedProducts.set(product.id, product);
+  }
+  while (renderedProducts.size > RENDERED_LIMIT) {
+    const oldest = renderedProducts.keys().next().value;
+    if (oldest === undefined) break;
+    renderedProducts.delete(oldest);
+  }
+}
+
+/**
+ * Product page data.
+ *
+ * Resolution order: Firestore, then this process's cache of products it has
+ * already rendered. eBay listings have no variant matrix, so there is nothing to
  * re-resolve.
  */
 export async function getProduct(productId: string): Promise<Product> {
-  const product = await getProductById(productId);
-  if (!product) {
-    throw new Error(`Product ${productId} not found`);
+  try {
+    const stored = await getProductById(productId);
+    if (stored) return stored;
+  } catch (error) {
+    console.error(`Could not read product ${productId} from the store:`, error);
   }
-  return product;
+
+  const rendered = renderedProducts.get(productId);
+  if (rendered) return rendered;
+
+  throw new Error(`Product ${productId} not found`);
 }
 
 /**
