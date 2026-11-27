@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { useCurrency } from "@/components/currency-provider";
+import { ChatButton } from "@/components/chat-button";
 import { SearchSuggestions } from "@/components/search-suggestions";
 import { useAuth } from "@/components/providers";
 import { signOutUser } from "@/lib/firebase/auth";
@@ -228,6 +229,7 @@ export function SiteHeader() {
 
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           {cartAction}
+          <ChatButton />
           {authAction}
         </div>
       </div>

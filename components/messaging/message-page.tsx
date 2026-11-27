@@ -304,12 +304,12 @@ export function MessagePage() {
           onRollback={dropOptimistic}
         />
 
-        {/* Offered only after the customer has actually sent a couple of messages
-            AND answered the notification prompt, so the two never collide. */}
+        {/* Asked as soon as the chat opens (once the notification prompt has been
+            answered, so the two never collide) rather than waiting for a few
+            messages — by the time someone is in the chat they clearly intend to
+            come back. Dismissal is remembered. */}
         <InstallAppBanner
-          messageCount={
-            pushSettled ? messages.filter((message) => message.senderRole === "customer").length : 0
-          }
+          messageCount={pushSettled ? Math.max(1, messages.filter((message) => message.senderRole === "customer").length) : 0}
         />
       </div>
     </div>

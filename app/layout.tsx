@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { FloatingOrderContact } from "@/components/floating-order-contact";
 import { ChromeVisibility } from "@/components/chrome-visibility";
+import { NotificationNudge } from "@/components/notification-nudge";
 import { SiteStructuredData } from "@/components/structured-data";
 import { InstallPrompt } from "@/components/install-prompt";
 import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
@@ -122,6 +123,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers>
           <CurrencyProvider currency={currency} country={country}>
             <ChromeVisibility />
+            <NotificationNudge />
             <SiteHeader />
             <main
               id="main-content"

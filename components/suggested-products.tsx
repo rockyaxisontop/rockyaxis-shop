@@ -44,6 +44,9 @@ export function SuggestedProducts({ groups }: { groups: SuggestedGroup[] }) {
           {index === 1 && groups.length > 2 ? (
             <AdSlot variant="feature" label="Sponsored" creative={index} />
           ) : null}
+          {/* Notification-style unit after the third row: high-visibility slot
+              that falls back to our own card if the network doesn't fill it. */}
+          {index === 2 ? <AdSlot variant="native" label="Recommended for you" slot="suggestions" /> : null}
         </div>
       ))}
 

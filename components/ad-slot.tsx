@@ -19,7 +19,10 @@ import {
  * strip   – slim one-line card, the lightest possible unit
  * pill    – a compact always-clickable button, no image (the "greedy" CTA)
  */
-export type AdSlotVariant = "banner" | "native" | "in-feed" | "feature" | "strip" | "pill";
+export type AdSlotVariant = "banner" | "banner-row" | "native" | "in-feed" | "feature" | "strip" | "pill";
+
+/** How long the network gets to fill the native container before we replace it. */
+const NATIVE_FILL_TIMEOUT_MS = 4000;
 
 type ImageAd = {
   eyebrow: string;
@@ -96,6 +99,8 @@ export function AdSlot({
   const nativeRef = useRef<HTMLDivElement | null>(null);
   // Set when this slot lost the race for the page's single 728x90.
   const [collapsed, setCollapsed] = useState(false);
+  // True once we've waited long enough for the native unit to fill and it hasn't.
+  const [unfilled, setUnfilled] = useState(false);
 
   useEffect(() => {
     if (variant !== "banner" || !bannerRef.current) return;
@@ -111,6 +116,14 @@ export function AdSlot({
 
     host.setAttribute("data-ad-728", "1");
     renderBanner728(host);
+
+    // If the network never paints into the iframe, swap in our own card rather
+    // than leaving a bordered empty box on the page.
+    window.setTimeout(() => {
+      const frame = host.querySelector("iframe");
+      const painted = frame && (frame.clientHeight > 40 || (frame.getAttribute("height") ?? "") !== "0");
+      if (!painted) setUnfilled(true);
+    }, NATIVE_FILL_TIMEOUT_MS);
   }, [variant]);
 
   useEffect(() => {
@@ -120,14 +133,26 @@ export function AdSlot({
 
     // Defer the script until the unit is close to the viewport, so it never
     // costs anything for visitors who bounce early.
-    if (typeof IntersectionObserver === "undefined") {
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
       loadNativeBanner();
+      // The network injects its markup asynchronously, and sometimes not at
+      // all. Give it a fair window, then show our own card instead of a blank.
+      window.setTimeout(() => {
+        if ((host.innerHTML ?? "").trim().length === 0) setUnfilled(true);
+      }, NATIVE_FILL_TIMEOUT_MS);
+    };
+
+    if (typeof IntersectionObserver === "undefined") {
+      start();
       return;
     }
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          loadNativeBanner();
+          start();
           observer.disconnect();
         }
       },
@@ -139,25 +164,85 @@ export function AdSlot({
 
   if (variant === "banner") {
     if (collapsed) return <AdSlot variant="strip" label={label} className={className} />;
+    // Same rule as the native unit: the network does not always fill the iframe,
+    // and a bordered empty box looks broken. Fall back to our own card instead.
     return (
       <aside aria-label="Advertisement" className={`mx-auto w-full max-w-3xl px-3 ${className}`}>
         <AdLabel label={label} />
-        <div className="flex min-h-[92px] items-center justify-center overflow-hidden rounded-2xl border border-border bg-white/60">
-          <div ref={bannerRef} className="flex items-center justify-center" />
-        </div>
+        {unfilled ? (
+          <AdSlot variant="strip" label="Sponsored" className="max-w-3xl px-0" />
+        ) : (
+          <div className="flex min-h-[92px] items-center justify-center overflow-hidden rounded-2xl border border-border bg-white/60">
+            <div ref={bannerRef} className="flex items-center justify-center" />
+          </div>
+        )}
       </aside>
     );
   }
 
   if (variant === "native") {
+    // The network unit fills this container when it chooses to serve. It leaves
+    // it empty for reasons only the network knows (frequency caps, paused
+    // campaigns, bot/geo filters) — so we watch it for a short while and fall
+    // back to an in-house card rather than leaving a dead 120px box.
     return (
       <aside aria-label="Advertisement" className={`mx-auto w-full max-w-3xl px-3 ${className}`}>
         <AdLabel label={label} />
-        <div
-          ref={nativeRef}
-          id={slot ? `container-${AD_NATIVE_ID}-${slot}` : `container-${AD_NATIVE_ID}`}
-          className="min-h-[120px] w-full overflow-hidden rounded-2xl border border-border bg-white"
-        />
+        <div className="relative">
+          <div
+            ref={nativeRef}
+            aria-hidden={unfilled}
+            id={slot ? `container-${AD_NATIVE_ID}-${slot}` : `container-${AD_NATIVE_ID}`}
+            className={
+              unfilled
+                ? "hidden"
+                : "min-h-[120px] w-full overflow-hidden rounded-2xl border border-border bg-white"
+            }
+          />
+          {unfilled ? <NativeFallbackCard /> : null}
+        </div>
+      </aside>
+    );
+  }
+
+  if (variant === "banner-row") {
+    // Full-width banner that lives INSIDE a product grid. It spans every column
+    // on its own row, so the tiles above and below stay perfectly aligned.
+    const ad = creativeFor(creative);
+    return (
+      <aside
+        aria-label="Advertisement"
+        className={`col-span-full min-w-0 ${className}`}
+      >
+        <a
+          href={AD_SMARTLINK}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          aria-label={`Advertisement: ${ad.title}`}
+          className="group flex items-center gap-3 overflow-hidden rounded-2xl border border-dashed border-brand/30 bg-gradient-to-r from-brand/5 via-white to-brand/5 p-2 transition hover:border-brand/60 hover:shadow-sm sm:gap-4 sm:p-3"
+        >
+          <span className="relative h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-2 sm:h-20 sm:w-32">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={ad.image}
+              alt={ad.alt}
+              loading="lazy"
+              decoding="async"
+              className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <span className="absolute left-1 top-1 rounded-full bg-ink/85 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white">
+              Ad
+            </span>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] font-bold text-ink sm:text-sm">{ad.title}</span>
+            <span className="block truncate text-[11px] text-ink-soft sm:text-xs">{ad.subtitle}</span>
+          </span>
+          <span className="hidden shrink-0 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white transition group-hover:bg-brand group-hover:text-ink sm:inline-flex">
+            {ad.cta}
+          </span>
+          <span aria-hidden className="shrink-0 text-ink-soft sm:hidden">›</span>
+        </a>
       </aside>
     );
   }
@@ -282,6 +367,58 @@ export function AdSlot({
 
 function creativeFor(index: number): ImageAd {
   return AD_CREATIVES[Math.abs(index) % AD_CREATIVES.length];
+}
+
+/**
+ * Shown in place of the network's native unit when it doesn't fill its
+ * container.
+ *
+ * It deliberately mimics the *shape* of the native feed unit (a small
+ * notification-style card with an icon, a headline and a CTA) so the slot still
+ * reads as a sponsored recommendation instead of a gap in the page. It is our
+ * own markup pointing at our ad link — no third-party script involved, so it
+ * can't be blocked or left blank.
+ */
+function NativeFallbackCard() {
+  const offers = AD_CREATIVES.slice(0, 3);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-white">
+      <ul className="divide-y divide-border">
+        {offers.map((offer, index) => (
+          <li key={offer.title}>
+            <a
+              href={AD_SMARTLINK}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="flex items-center gap-3 px-3 py-2.5 transition hover:bg-brand-tint"
+            >
+              <span className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-surface-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={offer.image}
+                  alt=""
+                  loading="lazy"
+                  className="size-full object-cover"
+                />
+                <span className="absolute -right-0.5 -bottom-0.5 grid size-4 place-items-center rounded-full bg-brand text-[9px] font-bold text-white">
+                  {index + 1}
+                </span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold text-ink">
+                  {offer.title}
+                </span>
+                <span className="block truncate text-[11px] text-ink-soft">{offer.subtitle}</span>
+              </span>
+              <span className="shrink-0 rounded-full bg-ink px-2.5 py-1 text-[11px] font-semibold text-white">
+                {offer.cta}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function AdLabel({ label }: { label: string }) {

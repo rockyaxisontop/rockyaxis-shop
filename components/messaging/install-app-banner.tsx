@@ -11,9 +11,13 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 /**
- * "Install MT Store" banner, shown only after the customer has actually used
- * the chat (2+ open messages). Asking before the first reply feels pushy; by
- * then they have a reason to keep it on the home screen.
+ * "Install MT Store" banner.
+ *
+ * Shown as soon as someone opens the chat (once any notification prompt has been
+ * answered, which the caller gates), because being in the chat already means
+ * they intend to come back — waiting for a few messages meant most visitors
+ * never saw it. Dismissal is remembered, and it never appears when the app is
+ * already installed or the browser can't install it.
  */
 export function InstallAppBanner({ messageCount }: { messageCount: number }) {
   const [event, setEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -41,7 +45,7 @@ export function InstallAppBanner({ messageCount }: { messageCount: number }) {
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);
   }, []);
 
-  if (installed || dismissed || messageCount < 2) return null;
+  if (installed || dismissed || messageCount < 1) return null;
 
   async function install() {
     if (event) {

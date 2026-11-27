@@ -30,3 +30,16 @@ export function CurrencyProvider({
 export function useCurrency(): CurrencyContext {
   return useContext(CurrencyCtx);
 }
+
+/**
+ * The visitor's shipping destination, as the storefront promises it.
+ *
+ * Delivery is quoted at a fixed window and ships from the visitor's own country,
+ * mirroring the country-based currency the site already uses.
+ */
+export const DELIVERY_WINDOW = "24-48h";
+
+export function useShippingInfo(): { window: string; shipsFrom: string } {
+  const { countryName } = useCurrency();
+  return { window: DELIVERY_WINDOW, shipsFrom: countryName };
+}

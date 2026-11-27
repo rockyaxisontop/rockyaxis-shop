@@ -52,8 +52,10 @@ export function ProductGrid({
   );
 
   // Sponsored tiles sit in the normal grid flow, so the layout never jumps and
-  // a row keeps exactly the same footprint it had before.
-  const cells = adsEvery > 0 ? withInFeedAds(products, adsEvery) : products;
+  // a row keeps exactly the same footprint it had before. With few results the
+  // first break lands earlier, so a short page still carries one unit.
+  const cells =
+    adsEvery > 0 ? withInFeedAds(products, products.length > adsEvery ? adsEvery : 4) : products;
 
   if (loading) {
     return (
@@ -87,7 +89,7 @@ export function ProductGrid({
           return (
             <AdSlot
               key={`ad-${index}`}
-              variant="in-feed"
+              variant="banner-row"
               creative={adCreatives + cell.__ad}
               className="min-w-0"
             />

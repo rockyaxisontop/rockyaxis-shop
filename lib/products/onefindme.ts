@@ -216,28 +216,41 @@ export function mapEbayResult(item: EbayResult, options: MapOptions = {}): Produ
  * Refinements applied to page N (N ≥ 2). Each one is a *real* eBay search that
  * returns a partially different result set, which is how Load More keeps
  * discovering listings the API won't page through.
+ *
+ * These are deliberately generic. An earlier list was all laptop specs ("rtx",
+ * "ssd", …), which returned NOTHING for anything that wasn't a computer — so
+ * Load More went blank on ordinary searches like "Desk Lamp". Neutral modifiers
+ * keep working whatever the category.
  */
 const QUERY_REFINEMENTS = [
-  "rtx",
-  "ssd",
-  "16gb",
-  "17 inch",
-  "amd ryzen",
-  "intel i7",
-  "144hz",
   "used",
   "refurbished",
-  "touchscreen",
-  "oled",
+  "bundle",
+  "set",
+  "premium",
+  "deluxe",
+  "pro",
+  "plus",
   "mini",
-  "student",
-  "workstation",
-  "chromebook",
-  "2 in 1",
-  "lightweight",
-  "i5",
-  "core ultra",
-  "gaming",
+  "compact",
+  "portable",
+  "wireless",
+  "2 pack",
+  "4 pack",
+  "with case",
+  "with stand",
+  "heavy duty",
+  "for home",
+  "for office",
+  "travel",
+  "outdoor",
+  "kids",
+  "large",
+  "small",
+  "black",
+  "white",
+  "stainless steel",
+  "wooden",
 ];
 
 /** The upstream query used for the given 1-based page. Page 1 = the query itself. */
@@ -257,25 +270,74 @@ export function hasMorePages(page: number): boolean {
 /* Upstream call                                                              */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * How long a single upstream call may take.
+ *
+ * Cold queries against this API genuinely take 6-10s; hot ones take ~100ms. A
+ * shopper should not wait out the slow tail, so the call is abandoned at this
+ * point and the page is served from cache (or from stored products) instead.
+ */
+const UPSTREAM_TIMEOUT_MS = 6500;
+/** One retry after a timeout — the API is flaky, not usually down. */
+const UPSTREAM_ATTEMPTS = 2;
+/** How long a successful response is reused for the same query+page. */
+const MEMORY_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Process-local cache of upstream responses.
+ *
+ * `next: { revalidate }` already caches in the Next data cache, but it does not
+ * help inside a single server instance during a burst (and dev mode bypasses
+ * parts of it). This is what makes a repeated search instant, and what lets a
+ * timed-out call fall back to a slightly older answer rather than nothing.
+ */
+const upstreamCache = new Map<string, { at: number; payload: OneFindMeResponse }>();
+
 async function fetchUpstream(query: string, country: string, limit: number): Promise<OneFindMeResponse> {
   const params = new URLSearchParams({
     query,
     country,
     max_results: String(Math.min(Math.max(limit, 1), MAX_UPSTREAM_RESULTS)),
   });
+  const url = `${SEARCH_ENDPOINT}?${params.toString()}`;
+  const cacheKey = url;
+  const hit = upstreamCache.get(cacheKey);
+  const fresh = hit && Date.now() - hit.at < MEMORY_TTL_MS;
 
-  const response = await fetch(`${SEARCH_ENDPOINT}?${params.toString()}`, {
-    headers: { Accept: "application/json" },
-    // Search results move slowly; a short server-side cache keeps the free API
-    // friendly without ever serving something stale for long.
-    next: { revalidate: 300 },
-  });
+  if (fresh) return hit!.payload;
 
-  if (!response.ok) {
-    throw new Error(`OneFindMe search failed (${response.status})`);
+  try {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= UPSTREAM_ATTEMPTS; attempt += 1) {
+      try {
+        const response = await fetch(url, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+          cache: "no-store",
+          // NOTE: deliberately no `next: { revalidate }` here. Under the Next
+          // runtime that option made this fetch hang until the abort signal
+          // fired, even though the same request completed in ~100ms elsewhere.
+          // Caching is handled by `upstreamCache` below, which is explicit and
+          // predictable.
+        });
+
+        if (!response.ok) throw new Error(`OneFindMe search failed (${response.status})`);
+
+        const payload = (await response.json()) as OneFindMeResponse;
+        if (upstreamCache.size > 400) upstreamCache.clear();
+        upstreamCache.set(cacheKey, { at: Date.now(), payload });
+        return payload;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError;
+  } catch (error) {
+    // A slow/failed call still beats an empty page: serve the last good answer
+    // for this query, however old, rather than making the shopper retry.
+    if (hit) return hit.payload;
+    throw error;
   }
-
-  return (await response.json()) as OneFindMeResponse;
 }
 
 /**
@@ -285,7 +347,8 @@ async function fetchUpstream(query: string, country: string, limit: number): Pro
 export async function searchOneFindMe(input: ProviderSearchInput): Promise<ProviderSearchOutput> {
   const { query, page, limit, country } = input;
   const upstreamQuery = queryForPage(query, page);
-  const payload = await fetchUpstream(upstreamQuery, country || defaultCountry(), limit);
+  const resolvedCountry = country || defaultCountry();
+  const payload = await fetchUpstream(upstreamQuery, resolvedCountry, limit);
 
   const seen = new Set<string>();
   const products: Product[] = [];

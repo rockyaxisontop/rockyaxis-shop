@@ -3,11 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImageOff } from "lucide-react";
+import { ImageOff, Truck } from "lucide-react";
 import type { OptionValue, Product } from "@/lib/products/types";
 
 import { cn } from "@/lib/utils";
-import { useCurrency } from "@/components/currency-provider";
+import { DELIVERY_WINDOW, useCurrency, useShippingInfo } from "@/components/currency-provider";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -65,6 +65,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const router = useRouter();
   const { currency } = useCurrency();
+  const { shipsFrom } = useShippingInfo();
   const [imageFailed, setImageFailed] = React.useState(false);
   const [imageLoaded, setImageLoaded] = React.useState(false);
   const [useRaw, setUseRaw] = React.useState(false);
@@ -257,6 +258,19 @@ export function ProductCard({
           )}
         >
           {inStock ? "In stock" : "Check availability"}
+        </span>
+      ) : null}
+
+      {/* Delivery promise shown on every card: fixed window, ships from the
+          visitor's own country (same country the prices are quoted in). */}
+      {offer ? (
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] leading-tight text-ink-soft sm:text-[11px]">
+          <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+            <Truck className="size-3 shrink-0 text-brand" aria-hidden />
+            {DELIVERY_WINDOW}
+          </span>
+          <span aria-hidden className="text-ink-soft/40">•</span>
+          <span className="truncate">Ships from {shipsFrom}</span>
         </span>
       ) : null}
 

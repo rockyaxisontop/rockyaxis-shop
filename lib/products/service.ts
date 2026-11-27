@@ -7,7 +7,6 @@ import {
   findProductsByCategory,
   findProductsByTerm,
   getProductById,
-  getProductsByIds,
   persistProducts,
   recentProducts,
   type TermScope,
@@ -46,14 +45,23 @@ export type SuggestedGroup = { key: string; title: string; query: string; produc
 /** Max products held per category index — the homepage "catalogue" size. */
 const CATEGORY_TARGET = 120;
 const PAGE_SIZE = 20;
-/** Refinements worth trying in a single request before returning what we have. */
-const TOP_UP_ATTEMPTS = 3;
 
 const currencyCountry = () => defaultCountry();
 
-/** Products saved for one category, newest first (read-only; never calls out). */
-async function categoryFromStore(key: string, limit: number): Promise<Product[]> {
-  return findProductsByCategory(key, limit);
+/**
+ * Products saved for one category.
+ *
+ * One `array-contains` query instead of "read the index, then read every
+ * product in it" — the old shape cost up to N+1 Firestore reads per row on every
+ * page load. See {@link findProductsByCategory}.
+ */
+async function loadStoredCategory(key: string, limit = CATEGORY_TARGET): Promise<Product[]> {
+  try {
+    return await findProductsByCategory(key, limit);
+  } catch (error) {
+    console.error(`Could not read stored products for "${key}":`, error);
+    return [];
+  }
 }
 
 /**
@@ -89,14 +97,14 @@ export async function discoverCategoryProducts(
     return [];
   }
 
-  // Best-effort persistence: saving enriches the catalogue over time, but a
-  // write failure must not hide the products we already have in hand.
-  try {
-    await persistProducts(found, scope, {
+  // Best-effort persistence, not awaited: saving enriches the catalogue over
+  // time, but must never add latency to the page or hide products we have.
+  if (found.length > 0) {
+    void persistProducts(found, scope, {
       indexScopes: [{ kind: "search", value: query }],
+    }).catch((error: unknown) => {
+      console.error(`Could not store products for "${key}" (continuing):`, error);
     });
-  } catch (error) {
-    console.error(`Could not store products for "${key}" (continuing):`, error);
   }
 
   return found;
@@ -112,33 +120,29 @@ export async function getCategoryProducts(
   query: string,
   limit: number,
 ): Promise<Product[]> {
-  // Reading stored products is best-effort: if Firestore is unavailable (quota,
-  // outage) the row is simply rebuilt from the provider below.
-  let products: Product[] = [];
-  let seen = new Set<string>();
-  try {
-    const before = await categoryFromStore(key, CATEGORY_TARGET);
-    products = await getProductsByIds(before.map((product) => product.id));
-    seen = new Set(products.map((product) => product.id));
-  } catch (error) {
-    console.error(`Could not read stored products for "${key}":`, error);
-  }
+  // The stored row and a fresh upstream page are fetched AT THE SAME TIME.
+  // Sequentially, every cold row paid store latency *then* provider latency;
+  // in parallel the row costs whichever is slower, not the sum.
+  //
+  // `discoverCategoryProducts` never throws and does not wait on persistence.
+  const [fromStore, fresh] = await Promise.all([
+    loadStoredCategory(key),
+    limit > 0 ? discoverCategoryProducts(key, query, 1, PAGE_SIZE) : Promise.resolve([]),
+  ]);
 
-  const result = products.filter((product) => (product.offers?.length ?? 0) > 0);
+  const seen = new Set<string>();
+  const result: Product[] = [];
+  const push = (product: Product) => {
+    if (seen.has(product.id)) return;
+    if ((product.offers?.length ?? 0) === 0) return;
+    seen.add(product.id);
+    result.push(product);
+  };
 
-  const missing = limit > 0 ? limit - result.length : 0;
-  if (missing > 0) {
-    // Discover in small pages until the row can be filled.
-    for (let page = 1; page <= 3 && result.length < limit; page += 1) {
-      const fresh = await discoverCategoryProducts(key, query, page, PAGE_SIZE);
-      for (const product of dedupe(fresh)) {
-        if (seen.has(product.id) || (product.offers?.length ?? 0) === 0) continue;
-        seen.add(product.id);
-        result.push(product);
-        if (result.length >= limit) break;
-      }
-    }
-  }
+  // Stored products first (they are the ones we chose to keep), then whatever
+  // this request just discovered to top the row up.
+  fromStore.forEach(push);
+  fresh.forEach(push);
 
   const row = result.slice(0, Math.max(limit, 0));
   rememberProducts(row);
@@ -176,14 +180,37 @@ export async function getSuggestedProducts(
 /* Customer search + Load More                                                */
 /* -------------------------------------------------------------------------- */
 
-function encodePageToken(page: number): string {
-  return `p${page}`;
+/**
+ * Page token = page number + the ids already shown, packed as JSON then
+ * base64url.
+ *
+ * Carrying the seen ids in the token is what lets Load More skip repeats without
+ * reading Firestore: the browser sends back what it has, the server returns only
+ * products not in that list. A token is opaque to the client, bounded (it stops
+ * growing once it reaches SEEN_CAP), and if it is missing/corrupt we simply
+ * behave like page 1.
+ */
+const SEEN_CAP = 160;
+
+type PageState = { page: number; seen: string[] };
+
+function encodePageToken(page: number, seen: string[]): string {
+  const payload: PageState = { page, seen: seen.slice(-SEEN_CAP) };
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
 
-function pageFromToken(token: string | undefined): number {
-  const match = /^p(\d+)$/.exec(token ?? "");
-  const page = match ? Number(match[1]) : 1;
-  return Number.isFinite(page) && page >= 1 ? page : 1;
+function pageFromToken(token: string | undefined): PageState {
+  if (!token) return { page: 1, seen: [] };
+  try {
+    const parsed = JSON.parse(Buffer.from(token, "base64url").toString("utf8")) as Partial<PageState>;
+    const page = Number(parsed.page);
+    const seen = Array.isArray(parsed.seen) ? parsed.seen.filter((id): id is string => typeof id === "string") : [];
+    return { page: Number.isFinite(page) && page >= 1 ? page : 1, seen };
+  } catch {
+    // Older `p2`-style tokens still work.
+    const legacy = /^p(\d+)$/.exec(token);
+    return { page: legacy ? Number(legacy[1]) : 1, seen: [] };
+  }
 }
 
 /**
@@ -201,7 +228,8 @@ export async function searchProducts({
   imageUrl,
 }: ProductSearchParams): Promise<ProductSearchResult> {
   const term = query?.trim() ?? "";
-  const page = pageFromToken(pageToken);
+  const tokenState = pageFromToken(pageToken);
+  const page = tokenState.page;
   const size = Math.min(Math.max(limit || PAGE_SIZE, 1), 20);
   const provider = getProductProvider();
 
@@ -216,74 +244,68 @@ export async function searchProducts({
 
   const scope: TermScope = { kind: "search", value: text };
 
-  // One upstream call per page. Page 1 is the query itself; later pages are
-  // further refinements of the same query that return a partly different set
-  // of eBay listings.
-  const fetchPage = async (targetPage: number): Promise<{ products: Product[]; hasMore: boolean }> => {
-    const output = await provider.search({
-      query: text,
-      page: targetPage,
-      limit: size,
-      country: currencyCountry(),
+  // ---- Fast path -----------------------------------------------------------
+  // The shopper waits for exactly two things: one upstream request, and a
+  // response. Firestore is *not* on that path any more:
+  //   • saving runs in the background (it only enriches the catalogue);
+  //   • stored products are only consulted when upstream returned nothing.
+  // This is what turned a ~3-6s search into roughly the provider's own latency.
+  const output = await provider
+    .search({ query: text, page, limit: size, country: currencyCountry() })
+    .catch((error: unknown) => {
+      console.error(`Product search failed for "${text}":`, error);
+      return { products: [] as Product[], hasMore: false };
     });
-    return { products: output.products, hasMore: output.hasMore };
-  };
 
-  let pageIndex = page;
-  let pageProducts: Product[] = [];
-  let hasMore = false;
+  let pageProducts = dedupe(output.products);
+  let hasMore = output.hasMore;
 
-  // Keep refining until this request can fill a page with listings nobody has
-  // seen yet. When the catalogue for a term is already exhausted upstream, the
-  // walk falls back to stored products instead of returning an empty page.
-  for (let attempt = 0; attempt < TOP_UP_ATTEMPTS; attempt += 1) {
-    try {
-      const output = await fetchPage(pageIndex);
-      hasMore = output.hasMore;
-      pageProducts = dedupe(output.products);
-    } catch (error) {
-      console.error(`OneFindMe search failed for "${text}":`, error);
-      pageProducts = [];
-    }
-
-    if (pageProducts.length > 0 || !hasMore) break;
-    pageIndex += 1;
+  // If this refinement returned nothing usable (or only things already shown),
+  // walk on to the next refinement rather than handing back an empty page —
+  // that was the "Load More shows blank" case.
+  const usableNow = (list: Product[]) => list.some((product) => (product.offers?.length ?? 0) > 0);
+  let nextPage = page;
+  let seenIds = new Set(tokenState.seen);
+  while (
+    hasMore &&
+    nextPage - page < 3 &&
+    (!usableNow(pageProducts) || pageProducts.every((product) => seenIds.has(product.id)))
+  ) {
+    nextPage += 1;
+    const retry = await provider
+      .search({ query: text, page: nextPage, limit: size, country: currencyCountry() })
+      .catch(() => null);
+    if (!retry) break;
+    pageProducts = dedupe(retry.products);
+    hasMore = retry.hasMore;
+    seenIds = new Set(tokenState.seen);
   }
+  const lastPage = nextPage;
 
-  // Persisting is best-effort: if Firestore is unavailable (quota, outage) the
-  // shopper still sees the results they asked for — saving can catch up on a
-  // later request.
-  let fresh: Product[] = [];
-  try {
-    fresh = await persistProducts(pageProducts, scope);
-  } catch (error) {
-    console.error(`Could not store search results for "${text}":`, error);
+  // Fire-and-forget persistence: never awaited, so a slow or unavailable store
+  // cannot delay the response. `persistProducts` is idempotent by product id, so
+  // a retried request just re-confirms what's already there.
+  if (pageProducts.length > 0) {
+    void persistProducts(pageProducts, scope).catch((error: unknown) => {
+      console.error(`Could not store search results for "${text}":`, error);
+    });
   }
 
   const usable = (product: Product) => (product.offers?.length ?? 0) > 0;
+  const alreadySeen = new Set(tokenState.seen);
+  const combined: Product[] = pageProducts.filter(
+    (product) => usable(product) && !alreadySeen.has(product.id),
+  );
 
-  // Newly discovered listings first — that is what makes Load More visibly add
-  // products. Already-stored ones fill the rest of the page.
-  const combined: Product[] = [];
-  const seen = new Set<string>();
-  // Upstream results first: when Firestore is unavailable these are the only
-  // products this request has.
-  for (const product of fresh.filter(usable)) {
-    if (seen.has(product.id)) continue;
-    seen.add(product.id);
-    combined.push(product);
-  }
-  for (const product of pageProducts.filter(usable)) {
-    if (seen.has(product.id)) continue;
-    seen.add(product.id);
-    combined.push(product);
-  }
-
-  if (combined.length < size) {
+  // Only when upstream has nothing new do we look in the store — this is the
+  // "catalogue already collected" case, and it costs one query instead of one
+  // on every search.
+  if (combined.length === 0) {
     try {
-      const stored = await findProductsByTerm(scope, size * 3);
+      const stored = await findProductsByTerm(scope, size * 2);
+      const seen = new Set<string>();
       for (const product of stored.filter(usable)) {
-        if (seen.has(product.id)) continue;
+        if (seen.has(product.id) || alreadySeen.has(product.id)) continue;
         seen.add(product.id);
         combined.push(product);
         if (combined.length >= size) break;
@@ -298,11 +320,11 @@ export async function searchProducts({
 
   return {
     products: page_,
-    // Continue the walk from wherever this request stopped, so Load More keeps
-    // discovering new refinements instead of re-walking the same ones.
+    // Carry forward everything shown so far so the next Load More can skip it
+    // without a database read.
     nextPageToken:
-      fresh.length > 0 || pageProducts.length > 0 || hasMore
-        ? encodePageToken(pageIndex + 1)
+      pageProducts.length > 0 || hasMore
+        ? encodePageToken(lastPage + 1, [...tokenState.seen, ...page_.map((product) => product.id)])
         : undefined,
   };
 }

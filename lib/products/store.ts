@@ -331,6 +331,9 @@ export type IndexRecord = {
 export async function appendToIndex(scope: TermScope, record: IndexRecord): Promise<void> {
   const { ids, page } = record;
   if (ids.length === 0) return;
+  // Same cooling-off rule as `persistProducts`: an index is bookkeeping, and
+  // retrying it against an exhausted quota only costs more doomed calls.
+  if (isStoreUnavailable()) return;
   const db = getAdminDb();
   const key = scope.kind === "search" ? queryKeyFor(scope.value) : categoryKeyFor(scope.value);
   const collection = scope.kind === "search" ? QUERIES : CATEGORIES;
@@ -381,10 +384,21 @@ export async function persistProducts(
   const unique = dedupe(products);
   if (unique.length === 0) return [];
 
+  // Skip writes entirely while the store is cooling down after a quota/outage
+  // failure. Without this, every homepage row retried a failing write and a
+  // single page load cost dozens of doomed round-trips.
+  if (isStoreUnavailable()) return unique;
+
   const db = getAdminDb();
   const refs = unique.map((product) => db.collection(PRODUCTS).doc(product.id));
-  const existing = await db.getAll(...refs);
-  const found = new Map(existing.map((snapshot) => [snapshot.id, snapshot]));
+
+  let found: Map<string, FirebaseFirestore.DocumentSnapshot>;
+  try {
+    found = new Map((await db.getAll(...refs)).map((snapshot) => [snapshot.id, snapshot]));
+  } catch (error) {
+    if (isQuotaOrAvailabilityError(error)) unavailableUntil = Date.now() + UNAVAILABLE_RETRY_MS;
+    throw error;
+  }
 
   const batch = db.batch();
   const term = normalise(scope.value);
@@ -419,7 +433,12 @@ export async function persistProducts(
 
   if (writes > 0) {
     // Firestore caps a batch at 500 writes; batches here are ≤ 40 products.
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (error) {
+      if (isQuotaOrAvailabilityError(error)) unavailableUntil = Date.now() + UNAVAILABLE_RETRY_MS;
+      throw error;
+    }
   }
 
   for (const indexScope of [scope, ...indexScopes]) {

@@ -47,8 +47,17 @@ export async function POST(request: Request) {
       imageUrl: body.image_url,
     });
 
-    // Results are per-search and change with every page: never cache them.
-    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+    // A repeat of the same query+page is served from memory for a few minutes.
+    // Load More must never be cached (each page is new by design), so only the
+    // first page gets a shared cache entry.
+    const isFirstPage = !body.page_token;
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": isFirstPage
+          ? "public, max-age=60, stale-while-revalidate=300"
+          : "no-store",
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Product search failed";
     return NextResponse.json({ error: message }, { status: 500 });
