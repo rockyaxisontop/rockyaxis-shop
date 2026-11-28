@@ -9,6 +9,7 @@ import { PriceHistoryChart } from "@/components/price-history-chart";
 import { PriceRangeGauge } from "@/components/price-range-gauge";
 import { ProductAttributes } from "@/components/product-attributes";
 import { ProductRecommendations } from "@/components/product-recommendations";
+import { useShippingInfo } from "@/components/currency-provider";
 import { VariantSelector } from "@/components/variant-selector";
 import type { SimilarFetcher } from "@/hooks/use-product-recommendations";
 import { discountPercent, formatListPrice, formatPrice, isInStock, leadOffer } from "@/lib/format";
@@ -268,13 +269,11 @@ function Description({ className, ...rest }: React.ComponentProps<"div">) {
 
 function Attributes({ className, ...rest }: React.ComponentProps<"div">) {
   const { product } = useProductDetails("ProductDetailsAttributes");
-  if (!hasAttributes(product)) {
-    return null;
-  }
+  const { shipsFrom } = useShippingInfo();
   return (
     <div className={cn("flex flex-col gap-2", className)} {...rest}>
       <h2 className="text-sm font-medium text-muted-foreground">Details</h2>
-      <ProductAttributes product={product} />
+      <ProductAttributes product={product} shipsFrom={shipsFrom} />
     </div>
   );
 }
@@ -299,16 +298,6 @@ function Recommendations({ fetchSimilar, ...rest }: ProductDetailsRecommendation
       {...recommendations}
       {...rest}
     />
-  );
-}
-
-function hasAttributes(product: Product): boolean {
-  return (
-    Boolean(product.category) ||
-    Object.keys(product.structured_attributes ?? {}).length > 0 ||
-    (product.materials?.length ?? 0) > 0 ||
-    Boolean(product.gender) ||
-    Boolean(product.age)
   );
 }
 

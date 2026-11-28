@@ -161,12 +161,12 @@ export function mapEbayResult(item: EbayResult, options: MapOptions = {}): Produ
   const id = productIdForUrl(url);
   const brand = detectBrand(title);
 
+  // Delivery promise shown on the product page. These describe OUR storefront's
+  // terms, not the eBay seller's: the shopper is in a country we ship across and
+  // the currency they see is that country's. The seller's own `ships_from` /
+  // `shipping_cost` are deliberately not surfaced — showing "Ships from China"
+  // next to "free delivery across Nepal" contradicts itself.
   const structured: Record<string, string[]> = {};
-  if (item.ships_from) structured["Ships from"] = [item.ships_from];
-  if (item.delivery_days) structured["Delivery"] = [`${item.delivery_days} days`];
-  if (typeof item.shipping_cost === "number") {
-    structured["Shipping"] = [item.shipping_cost === 0 ? "Free" : `${currency} ${item.shipping_cost}`];
-  }
 
   const offerPrice: Price = { price: price ?? 0, compare_at_price: null, currency };
 

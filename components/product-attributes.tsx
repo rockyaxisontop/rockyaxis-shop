@@ -25,8 +25,16 @@ const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice
  * when the richer `materials` array is present so the same fact isn't shown
  * twice.
  */
-function buildAttributes(product: Product): Attribute[] {
+function buildAttributes(product: Product, shipsFrom?: string): Attribute[] {
   const rows: Attribute[] = [];
+
+  // Delivery terms first: they are the thing shoppers look for on this page,
+  // and both are the visitor's own country (the same one their prices use).
+  if (shipsFrom) {
+    rows.push({ label: "Ships From", value: shipsFrom });
+    rows.push({ label: "Delivery", value: "24-48 hrs" });
+    rows.push({ label: "Shipping", value: "Free" });
+  }
 
   if (product.category?.title) {
     rows.push({ label: "Category", value: product.category.title });
@@ -36,8 +44,17 @@ function buildAttributes(product: Product): Attribute[] {
   const hasMaterials = materials.length > 0;
 
   for (const [key, values] of Object.entries(product.structured_attributes ?? {})) {
-    const normalized = key.replace(/[_-]+/g, "").toLowerCase();
+    // Strip separators AND spaces: the stored keys are humanised ("Ships from"),
+    // so without this the delivery filter below silently never matched.
+    const normalized = key.replace(/[\s_-]+/g, "").toLowerCase();
     if (hasMaterials && (normalized === "material" || normalized === "materials")) {
+      continue;
+    }
+    // Delivery terms are always ours (see the rows above). Seller-supplied
+    // "ships from"/"delivery"/"shipping" values are dropped even when they were
+    // stored in Firestore before this rule existed — otherwise the page shows
+    // two contradictory answers ("United States" and "Ships from LK").
+    if (normalized === "shipsfrom" || normalized === "delivery" || normalized === "shipping") {
       continue;
     }
     const cleaned = unique((values ?? []).map((value) => String(value).trim()).filter(Boolean));
@@ -65,10 +82,12 @@ function buildAttributes(product: Product): Attribute[] {
 
 export interface ProductAttributesProps extends React.ComponentProps<"dl"> {
   product: Product;
+  /** The visitor's country — where we ship from and deliver to. */
+  shipsFrom?: string;
 }
 
-export function ProductAttributes({ product, className, ...props }: ProductAttributesProps) {
-  const attributes = buildAttributes(product);
+export function ProductAttributes({ product, shipsFrom, className, ...props }: ProductAttributesProps) {
+  const attributes = buildAttributes(product, shipsFrom);
   if (attributes.length === 0) {
     return null;
   }

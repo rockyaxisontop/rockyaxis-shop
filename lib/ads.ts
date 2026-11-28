@@ -63,7 +63,11 @@ export function loadNativeBanner() {
 
 const SOCIAL_BAR_SRC =
   "https://www.highperformanceformat.com/e76ad1e8a3f3403f8acb8df4a2bb8da0/invoke.js";
-const POPUNDER_SRC = "https://araplhn.org/4f9973857107b0c4be7d4b0b9deed4dd/invoke.js";
+// NOTE: this key used to be requested from `araplhn.org`, which now returns 404
+// (the campaign moved hosts). The same key is live on highperformanceformat.com,
+// which is where every other unit on the site is served from.
+const POPUNDER_SRC =
+  "https://www.highperformanceformat.com/4f9973857107b0c4be7d4b0b9deed4dd/invoke.js";
 
 const loadedScripts = new Set<string>();
 

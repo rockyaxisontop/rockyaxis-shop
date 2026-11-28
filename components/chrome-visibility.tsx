@@ -1,9 +1,15 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { AD_POPUNDER_SCRIPT, AD_SOCIAL_BAR_SCRIPT, loadOnce } from "@/lib/ads";
+import { AD_POPUNDER_SCRIPT, loadOnce } from "@/lib/ads";
+import {
+  AD_IN_PAGE_PUSH_SRC,
+  AD_SOCIAL_BAR_SRC,
+  clearNetworkAdMarkup,
+  loadNetworkScript,
+} from "@/lib/ad-units";
 
 /**
  * Hides the site header, footer and page padding on full-screen app routes.
@@ -18,6 +24,27 @@ const APP_ROUTES = ["/message"];
 export function ChromeVisibility() {
   const pathname = usePathname() ?? "";
   const isApp = APP_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (isApp) {
+      // Leaving a normal page for the messenger: unwind anything the units
+      // injected so /message keeps its promise of being completely ad-free.
+      clearNetworkAdMarkup();
+      return;
+    }
+    // The network units look up `document.currentScript` and insert themselves
+    // next to it, so they must arrive as real <script> tags. Each is injected
+    // once per page load; the network's own geo/frequency rules decide whether
+    // a given visitor actually sees it.
+    loadNetworkScript(AD_SOCIAL_BAR_SRC, "social-bar");
+    loadNetworkScript(AD_IN_PAGE_PUSH_SRC, "in-page-push");
+  }, [isApp, mounted]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -57,7 +84,6 @@ function GlobalAds({ pathname, enabled }: { pathname: string; enabled: boolean }
     const timer = window.setTimeout(
       () => {
         loaded.current = true;
-        loadOnce(AD_SOCIAL_BAR_SCRIPT);
         loadOnce(AD_POPUNDER_SCRIPT);
       },
       // Landing pages get the units sooner — that may be the only page a
