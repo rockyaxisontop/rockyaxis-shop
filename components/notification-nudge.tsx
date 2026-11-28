@@ -15,11 +15,14 @@ import { askForPushOnce, getPushStatus } from "@/lib/messaging/push-client";
  * notification area even when the tab is closed. Nothing is installed.
  *
  * Deliberately quiet:
- *   • only when signed in, and only once per device (the shared
- *     `mt-store:push-asked` flag that the chat page also honours);
+ *   • only when signed in, and only once per device (its own dismissal key);
  *   • the browser prompt fires on the visitor's first click, because browsers
  *     ignore permission requests that arrive without a user gesture;
- *   • never shown on the chat page, which runs its own prompt.
+ *   • never shown on the chat page, which asks for real instead.
+ *
+ * It does NOT set the shared `mt-store:push-asked` flag: dismissing this nudge
+ * must not stop the chat page from asking, since the chat is where the customer
+ * actually wants replies.
  */
 const DISMISS_KEY = "mt-store:push-nudge-dismissed";
 
@@ -54,7 +57,8 @@ export function NotificationNudge() {
   // visitor's next click or keypress, which is what browsers require.
   useEffect(() => {
     if (!visible) return;
-    return askForPushOnce(() => setVisible(false));
+    // `remember: false` on purpose — see NotificationNudge's docblock.
+    return askForPushOnce(() => setVisible(false), { remember: false });
   }, [visible]);
 
   if (!visible) return null;

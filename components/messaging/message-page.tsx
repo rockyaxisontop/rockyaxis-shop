@@ -18,7 +18,7 @@ import { messageApi } from "@/lib/messaging/client";
 import { InstallAppBanner } from "@/components/messaging/install-app-banner";
 import { useCartOrderState, CartOrderSummary } from "@/components/messaging/cart-order-status";
 import type { PublicMessage } from "@/lib/messaging/types";
-import { askForPushOnce } from "@/lib/messaging/push-client";
+import { askForPushOnce, getPushStatus } from "@/lib/messaging/push-client";
 import type { PublicConversation } from "@/lib/messaging/types";
 
 /**
@@ -89,19 +89,37 @@ export function MessagePage() {
       });
   }, [merge, router, state]);
 
-  // First visit: prompt for notifications on the customer's first tap. Browsers
-  // ignore permission prompts that fire without a gesture.
+  // Prompt for notifications on the customer's first tap. Browsers ignore
+  // permission prompts that fire without a gesture.
+  //
+  // The `mt-store:push-asked` flag is NOT remembered here: someone whose browser
+  // blocked the prompt once (or who dismissed the site-wide nudge) still deserves
+  // a real chance in the chat, which is exactly where they want replies. The
+  // flag is only used to skip a prompt that would be ignored anyway.
   const [pushSettled, setPushSettled] = useState(false);
   useEffect(() => {
     if (state !== "ready") return;
-    // If the permission was already decided (or asked before), don't hold the
-    // install banner hostage to a prompt that will never appear.
-    if (localStorage.getItem("mt-store:push-asked")) {
-      setPushSettled(true);
-      return;
-    }
-    const cleanup = askForPushOnce(() => setPushSettled(true));
-    return cleanup;
+
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+
+    void getPushStatus()
+      .then((status) => {
+        if (cancelled) return;
+        // Already granted or blocked: nothing can be asked, so don't gate the
+        // install banner on a prompt that will never appear.
+        if (status !== "default") {
+          setPushSettled(true);
+          return;
+        }
+        cleanup = askForPushOnce(() => setPushSettled(true));
+      })
+      .catch(() => setPushSettled(true));
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
   }, [state]);
 
   // Clear the unread badge for MT Store's replies while the thread is open.

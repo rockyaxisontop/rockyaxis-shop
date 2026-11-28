@@ -82,6 +82,82 @@ self.addEventListener("notificationclick", (event) => {
     await self.clients.openWindow(target);
   })());
 });
+
+/* -------------------------------------------------------------------------- */
+/* Caching + offline fallback                                                 */
+/*                                                                            */
+/* A browser allows only ONE service worker per scope. This file must own "/"  */
+/* because FCM has to control it, so the caching behaviour that used to live   */
+/* in public/sw.js lives here too. public/sw.js now imports this worker, so     */
+/* either registration path ends up with a single worker doing both jobs.      */
+/*                                                                            */
+/* Never caches HTML or API responses: a stale price is worse than a slow page. */
+/* -------------------------------------------------------------------------- */
+
+const CACHE_VERSION = "mt-store-v2";
+const STATIC_CACHE = CACHE_VERSION + "-static";
+const OFFLINE_URL = "/offline";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(STATIC_CACHE)
+      .then((cache) => cache.addAll([OFFLINE_URL]).catch(() => undefined))
+      .then(() => self.skipWaiting()),
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key.indexOf(CACHE_VERSION) !== 0).map((key) => caches.delete(key))),
+      )
+      .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+
+  // Only GETs, and never cross-origin traffic.
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Navigations: network first, offline page as the fallback. Nothing cached.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const cache = await caches.open(STATIC_CACHE);
+        return (await cache.match(OFFLINE_URL)) || Response.error();
+      }),
+    );
+    return;
+  }
+
+  // Build assets (hashed filenames): cache-first, refreshed in the background.
+  // Written with indexOf + RegExp strings on purpose: this whole worker is a
+  // template literal, and backslashes in a regex literal get eaten.
+  const isAsset =
+    url.pathname.indexOf("/_next/static/") === 0 ||
+    new RegExp("[.](png|jpg|jpeg|webp|svg|woff2?|ico)$").test(url.pathname);
+  if (!isAsset) return;
+
+  event.respondWith(
+    caches.open(STATIC_CACHE).then(async (cache) => {
+      const cached = await cache.match(request);
+      const network = fetch(request)
+        .then((response) => {
+          if (response.ok) cache.put(request, response.clone());
+          return response;
+        })
+        .catch(() => cached || Response.error());
+      return cached || network;
+    }),
+  );
+});
 `;
 
   return new Response(body, {

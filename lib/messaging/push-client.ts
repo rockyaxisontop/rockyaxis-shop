@@ -53,18 +53,43 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
     return { ok: false, error: "This browser doesn't support notifications." };
   }
 
-  const permission = await Notification.requestPermission();
+  const permission =
+    Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (permission !== "granted") {
     return { ok: false, error: "Notifications were blocked in your browser settings." };
   }
 
-  const registration = await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
-  await navigator.serviceWorker.ready;
+  // Register the FCM worker. This file is what delivers a push while the site is
+  // closed — a PWA install is not required.
+  let registration: ServiceWorkerRegistration;
+  try {
+    registration = await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
+    await navigator.serviceWorker.ready;
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? `Couldn't start notifications: ${error.message}`
+          : "Couldn't start notifications on this device.",
+    };
+  }
 
-  const token = await getToken(getClientMessaging(), {
-    vapidKey: VAPID_KEY,
-    serviceWorkerRegistration: registration,
-  });
+  let token: string | null = null;
+  try {
+    token = await getToken(getClientMessaging(), {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? `Couldn't create a notification token: ${error.message}`
+          : "Couldn't create a notification token.",
+    };
+  }
   if (!token) return { ok: false, error: "Couldn't get a notification token." };
 
   // Save it through our API: the server decides admin vs customer placement.
@@ -116,8 +141,16 @@ const ASKED_KEY = "mt-store:push-asked";
  *
  * `onSettled` fires when the prompt has been answered (or skipped). The install
  * banner waits for it, so a customer never gets two banners at once.
+ *
+ * `remember` (default true) records that this device was asked. Pass `false`
+ * when the caller only shows a soft nudge: dismissing the nudge must not stop
+ * the browser prompt from ever appearing in the chat, which is where the
+ * customer actually wants replies.
  */
-export function askForPushOnce(onSettled?: () => void): () => void {
+export function askForPushOnce(
+  onSettled?: () => void,
+  { remember = true }: { remember?: boolean } = {},
+): () => void {
   if (typeof window === "undefined") return () => {};
 
   let done = false;
@@ -138,7 +171,7 @@ export function askForPushOnce(onSettled?: () => void): () => void {
       if (localStorage.getItem(ASKED_KEY)) return;
       const status = await getPushStatus();
       if (status !== "default") return;
-      localStorage.setItem(ASKED_KEY, "1");
+      if (remember) localStorage.setItem(ASKED_KEY, "1");
       await enablePush();
     } catch {
       /* never block the chat over a permission prompt */

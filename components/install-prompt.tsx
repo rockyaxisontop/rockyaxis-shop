@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Download, Share, SquarePlus, X } from "lucide-react";
 
 /** Chrome/Edge fire this; it is not in the DOM typings, so it is declared here. */
@@ -20,13 +21,21 @@ const DISMISS_KEY = "mt-store:install-dismissed";
  *   instructions instead.
  * - The prompt never appears when the app is already installed, and a dismissal
  *   is remembered so it can't nag.
+ * - It is suppressed on /message, which renders its own install banner above the
+ *   composer; two install prompts at once was the bug.
  */
 export function InstallPrompt() {
+  const pathname = usePathname();
+  const onChatPage = pathname === "/message";
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (onChatPage) {
+      setVisible(false);
+      return;
+    }
     // Hidden when already installed (standalone) or previously dismissed.
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -60,7 +69,7 @@ export function InstallPrompt() {
     }
 
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-  }, []);
+  }, [onChatPage]);
 
   function dismiss() {
     setVisible(false);
